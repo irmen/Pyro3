@@ -20,7 +20,7 @@ class testclass(Pyro.core.ObjBase):
 		
 
 ######## testclass object (standalone - delegate approach)
-class testclass2:
+class testclass2(object):
 	def __init__(self):
 		self.sum=0
 		self.changedby=''

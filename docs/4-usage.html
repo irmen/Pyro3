@@ -1,7 +1,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 4-usage.html,v 2.37.2.11 2009/04/02 00:40:54 irmen Exp $ -->
+<!-- $Id: 4-usage.html,v 2.37.2.13 2009/12/07 00:31:00 irmen Exp $ -->
 <head>
+  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
   <title>PYRO - Usage</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -94,18 +95,15 @@ command files have the '.cmd' extension. </p>
     <dt><code>pyro-genguid</code> &nbsp;&nbsp;(GUID generator)</dt>
 
     <dd>No arguments.</dd>
-    <dd>This is a very simple GUID generator. It uses the internal Pyro GUID generator to print a new GUID.</dd>
-    <br>
+    <dd>This is a very simple GUID generator. It uses the internal Pyro GUID generator to print a new GUID.<br></dd>
 
     <dt><code>pyro-ns, pyro-rns</code> &nbsp;&nbsp;(Name Server)</dt>
 
-    <dd>These scripts are explained in the <a href="5-nameserver.html#cmds">Name Server chapter</a>.</dd>
-    <br>
+    <dd>These scripts are explained in the <a href="5-nameserver.html#cmds">Name Server chapter</a>.<br></dd>
 
     <dt><code>pyro-es</code> &nbsp;&nbsp;(Event Server)</dt>
 
-    <dd>This script is explained in the <a href="11-services.html#event">Event Server (Pyro Services) chapter</a>.</dd>
-    <br>
+    <dd>This script is explained in the <a href="11-services.html#event">Event Server (Pyro Services) chapter</a>.<br></dd>
 
     <dt><code>pyro-nsc</code> &nbsp;&nbsp;(Name Server Control tool)</dt>
 
@@ -370,7 +368,10 @@ the chapter about the <a href="5-nameserver.html#locator">Name Server</a> to fin
   any objects that you don't need any longer. Use the following method to do that:
   <pre>
    daemon.disconnect(obj)
-</pre>Just pass the Pyro object you want to remove from the Daemon (and the Name Server).
+</pre><p>Just pass the Pyro object you want to remove from the Daemon (and the Name Server). It is also possible to 
+	pass the object's UID (string) instead of the object itself. This allows you to remove objects from the daemon
+	that you only know by their UID (for instance, you only have a Pyro URI or you got the object ID directly from
+the daemon's <code>getRegistered()</code> object list).</p>
 
   <h4>The Daemon handleRequest loop</h4>We're near the end of our server coding effort. The only thing left is the code
   that sits in a loop and processes incoming requests. Fortunately most of that is handled by a single method in the
@@ -638,7 +639,6 @@ For detailed information about these subjects, please refer to the relevant chap
 		property of the TLS in some way instead of just storing stuff on the TLS directly.</li>
 	
 </ul>
-</p>
 
 
   <h3><a name="notes" id="notes"></a>Last Notes</h3>Please be sure to read the chapter on <a href=

@@ -1,7 +1,7 @@
 
 # this module contains the ShoppingAgent code
 
-class ShoppingAgent:
+class ShoppingAgent(object):
 	def __init__(self, name):
 		self.name=name
 		self.productsToBuy=[]

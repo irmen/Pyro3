@@ -30,6 +30,7 @@ funcs = (f1,f2,f3,f4,f5,f6,f7,f8,f9,fa,fb,fc,fd,fe,ff)
 
 print '-------- BENCHMARK REMOTE OBJECT ---------'
 print 'Pay attention to the "fe" test -- this is a Oneway call and is *fast*'
+print '(if you are running the server and client on different machines)'
 begin = time.time()
 iters = 1000
 for f in funcs:

@@ -11,7 +11,8 @@ because otherwise the security module cannot be loaded from this
 directory (this is correct -safe- behavior of Python).
 
 Start the nameserver with:
-	"ns -v -s NSSecEx"
+	"pyro-ns -v -s NSSecEx"
+or	"python -m Pyro.naming -v -s NSSecEx"
 
 It will show you that it's using your security plugins.
 Then try to use the commands from the "nsc" or "xnsc" tool and

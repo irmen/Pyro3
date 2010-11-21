@@ -1,7 +1,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 9-security.html,v 2.28.2.1 2008/06/28 23:41:02 irmen Exp $ -->
+<!-- $Id: 9-security.html,v 2.28.2.5 2009/12/07 00:31:01 irmen Exp $ -->
 <head>
+  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
   <title>PYRO - Security</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -379,14 +380,10 @@ older versions with newer versions.</p>
   need the following add-on libraries to enable SSL support:
 
   <ul>
-    <li><a href="http://wiki.osafoundation.org/bin/view/Projects/MeTooCrypto">M2Crypto</a> (0.13 or later recommended)</li>
+    <li><a href="http://chandlerproject.org/bin/view/Projects/MeTooCrypto">M2Crypto</a></li>
 
     <li><a href="http://www.openssl.org">OpenSSL</a> (needed by M2Crypto)</li>
-  </ul>Why M2Crypto? Because it works for both client and server applications, and is thread safe.
-  <strong>Note:</strong> M2Crypto needs support for RC5 and IDEA compiled into OPENSSL. Since they're copyrighted these
-  options are normally not included in most major OpenSSL ditributions. You might have to recompile OpenSSL from the
-  sources yourself. Beware that if you use this to upgrade to a new OpenSSL version you also have to recompile OpenSSH
-  since it does a version check on the OpenSSL library.
+  </ul>
 
   <p>To start using SSL, you need to tell your Pyro daemon that it must use SSL instead of regular sockets. Do that by
   passing a <code>prtcol</code> parameter when you create a daemon, as follows:</p>
@@ -397,15 +394,20 @@ registered in the Name Server using the special PYROSSL protocol, that tells Pyr
 sockets. You may also want to add a special SSL connection validator on your daemon that checks the client certificate.
 The client programs don't need any changes because Pyro knows automatically how to deal with the PYROSSL protocol.
 There are a few configuration items that deal with the SSL configuration, look for <code>PYROSSL_CERTDIR</code> and the
-other items starting with <code>PYROSSL</code>. See the <a href="http://wiki.osafoundation.org/bin/view/Projects/MeTooCrypto">M2Crypto
+other items starting with <code>PYROSSL</code>. See the <a href="http://chandlerproject.org/bin/view/Projects/MeTooCrypto">M2Crypto
 homepage</a> or <a href="http://www.openssl.org">OpenSSL documentation</a> for instructions on how to create your own
-Certificate Authority- and server/client certificates.
+Certificate Authority- and server/client certificates. There's also a nice guide <a href="http://sial.org/howto/openssl/ca/">here.</a>
 
-  <p>If you're using the Name Server to look up your SSL objects, you won't have to change anything in the client code
-  because the SSL objects are registered with special <code>PYROSSL://</code> URIs in the NS, and Pyro knows how to
-  deal with that. If you're <em>not</em> using the NS and doing direct <code>PYROLOC://</code> lookups, you have to
-  change that in <code>PYROLOCSSL://</code> to tell Pyro it needs to use SSL. (likewise, if you're dealing with
-  <code>PYRO://</code> URIs yourself, you'll need to change that into <code>PYROSSL://</code>)</p>
+<p>There are a few config items to tweak how Pyro uses SSL, where it can find your cert files, key files, and so on.
+    Have a look in the Configuration chapter to see what they are (they all have 'SSL' in their name)
+</p>
+
+<p><strong>Note:</strong> it is very likely that you have to set PYRO_DNS_URI to True, because Pyro uses IP addresses by default while SSL
+    certificates will usually contain hostnames. If you don't set this config item the SSL certificate will be rejected
+because the name won't match.</p>
+
+<p>Please note that there is a <a href="http://mail.python.org/pipermail/python-list/2007-January/593716.html">known bug</a> in M2Crypto that makes it impossible to use socket timeouts (socket.setdefaulttimeout) when using SSL.</p>
+
   <div class="nav">
   <hr>
   <table width="100%">

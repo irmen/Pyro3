@@ -1,7 +1,7 @@
 # The actual shop.
 # Shopping agents come here to fill their pockets.
 
-class Mall:
+class Mall(object):
 	def __init__(self):
 		self.shops=[]
 	def addShop(self,shop):
@@ -14,7 +14,7 @@ class Mall:
 		return self				# hack for testserver's delegation init
 
 
-class Shop:
+class Shop(object):
 	def __init__(self,name):
 		self.name=name
 		self.stock={}

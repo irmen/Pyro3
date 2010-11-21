@@ -1,5 +1,5 @@
 
-class apples:
+class apples(object):
 	def __init__(self):
 		pass
 	def getName(self):

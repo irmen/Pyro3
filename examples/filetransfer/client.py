@@ -16,7 +16,7 @@
 import Pyro.core
 import sys,time
 
-class FileClient:
+class FileClient(object):
 	def __init__(self):
 		self.fileserver = Pyro.core.getProxyForURI("PYRONAME://fileserver")
 	def menu(self):
@@ -55,7 +55,9 @@ class FileClient:
 			print "error: ",x
 		else:
 			duration=time.time()-starttime
-			print len(data),"bytes received in",int(duration),"seconds =",int(len(data)/duration/1024.0),"kb/sec"
+			print len(data),"bytes received in",int(duration),"seconds",
+			if duration>0:
+				print "=",int(len(data)/duration/1024.0),"kb/sec"
 			open(file,"wb").write(data)
 			print "saved to",file
 			
@@ -82,7 +84,9 @@ class FileClient:
 			self.fileserver.closeFile()
 			file.close()
 			duration=time.time()-starttime
-			print total,"bytes received in",int(duration),"seconds =",int(total/duration/1024.0),"kb/sec"
+			print total,"bytes received in",int(duration),"seconds",
+			if duration>0:
+				print "=",int(total/duration/1024.0),"kb/sec"
 		
 
 def main(args):

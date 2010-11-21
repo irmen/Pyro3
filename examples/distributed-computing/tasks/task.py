@@ -5,7 +5,7 @@ import Pyro.constants
 #
 # The 'main' Task abstract baseclass.
 #
-class PartitionableTask:
+class PartitionableTask(object):
 	def __init__(self, name):
 		self.name=name
 	def split(self, numPiecesHint): 

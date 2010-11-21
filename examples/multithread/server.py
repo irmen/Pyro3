@@ -36,7 +36,7 @@ def determinePeriod():
 
 ######## testclass objects
 
-class IOtestclass_delegate:
+class IOtestclass_delegate(object):
 	def process(self, name, period):
 		print 'called by',name
 		print 'thread=',currentThread().getName()
@@ -48,7 +48,7 @@ class IOtestclass_delegate:
 		time.sleep(period)
 		return 'READY!'
 
-class CPUtestclass_delegate:
+class CPUtestclass_delegate(object):
 	def process(self,name, period):
 		global _timeval
 		print 'called by',name

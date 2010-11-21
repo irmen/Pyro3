@@ -2,7 +2,7 @@
 class BankError(Exception): pass
 
 # Unrestricted account.
-class Account:
+class Account(object):
 	def __init__(s):
 		s._balance=0.0
 	def withdraw(s, amount):
@@ -21,7 +21,7 @@ class RestrictedAccount(Account):
 			raise BankError('insufficent balance')
 
 # Abstract bank.
-class Bank:
+class Bank(object):
 	def __init__(s):
 		s.accounts={}
 	def name(s):

@@ -1,7 +1,8 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-  <!-- $Id: 6-eventserver.html,v 2.17.2.6 2009/03/28 23:12:54 irmen Exp $ -->
+  <!-- $Id: 6-eventserver.html,v 2.17.2.7 2009/12/07 00:31:01 irmen Exp $ -->
+  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
   <title>PYRO - Event Server</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -134,8 +135,7 @@
     <code>HKLM\System\CurrentControlSet\Services\PyroES</code>, and the value under that key is:
     <code>PyroServiceArguments</code> (REG_SZ, it will be asked and created for you when doing a <code>essvc.cmd
     install</code> from a command prompt).<br>
-    <em>Running the ES as a windows NT service it not well supported.</em></dd>
-	<br>
+    <em>Running the ES as a windows NT service it not well supported.</em><br></dd>
     <dt>You can also use <code>python -m</code> to start it:</dt>
     <dd><code>python -m Pyro.EventService.Server</code></dd>
   </dl>
@@ -160,7 +160,8 @@ URI= PYRO://192.168.1.40:7766/c0a8012804bc0c96774244d7d79d5db3
 Event Server started.
 </pre>
 
-  <h4>Configuration options<br></h4>There are two config options specifically for the ES:
+  <h4>Configuration options<br></h4>
+  <p>There are two config options specifically for the ES:
   <code>PYRO_ES_QUEUESIZE</code> and <code>PYRO_ES_BLOCKQUEUE</code>. Read about them in the <a href=
   "3-install.html">Installation and Configuration</a> chapter. By default, the ES will allocate moderately sized queues
   for subscribers, and publishers will block if such a queue becomes full (so no events get lost). You might want to

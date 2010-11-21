@@ -5,6 +5,7 @@ from Pyro.errors import PyroError,NamingError
 from Pyro.protocol import getHostname
 
 
+
 ######## Custom connections validator.
 
 class printCertValidator(Pyro.protocol.BasicSSLValidator):
@@ -25,8 +26,9 @@ class testclass(Pyro.core.ObjBase):
 
 ##### main program.
 
-# initialize the server and set the default namespace group
-Pyro.core.initServer()
+Pyro.config.PYROSSL_CERT="server.pem"
+# Pyro.config.PYROSSL_KEY="server.key"
+Pyro.config.PYRO_DNS_URI=True
 Pyro.config.PYRO_TRACELEVEL=3
 Pyro.config.PYRO_NS_DEFAULTGROUP=':test'
 Pyro.config.PYRO_LOGFILE='server_log'

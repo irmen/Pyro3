@@ -97,7 +97,7 @@ class SortTaskPartition(TaskPartition):
 #
 # The 'user interface' for the sort task.
 #
-class UserInterface:
+class UserInterface(object):
 	def begin(self):
 		print "Big data array sorting."
 		size=input("Enter the size of the data array (>100): ")

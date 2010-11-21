@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: errors.py,v 2.19.2.3 2008/05/17 09:56:01 irmen Exp $
+#	$Id: errors.py,v 2.19.2.5 2009/12/06 20:26:52 irmen Exp $
 #	Pyro Exception Types
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -56,14 +56,15 @@ class _InternalNoModuleError(PyroError):
 #          IS ONLY TO BE USED TO TRANSPORT AN EXCEPTION ACROSS THE NETWORK.
 #	NOTE4: It sets a special attribute on the exception that is raised
 #	       (constants.TRACEBACK_ATTRIBUTE), this is the *remote* traceback 
-#   NOTE5: ---> this class is intentionally not subclassed from Exception!!!
-#          Pyro's exception handling depends on this!
+#   NOTE5: ---> this class is intentionally not subclassed from Exception,
+#               and also not from object.
+#               Pyro's exception handling depends on this!
 #
 #############################################################################
 
 import Pyro.constants
 
-class PyroExceptionCapsule:
+class PyroExceptionCapsule:				# don't make this a new style class
 	def __init__(self,excObj,args=None):
 		self.excObj = excObj
 		self.args=args  # if specified, this is the remote traceback info

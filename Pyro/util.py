@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: util.py,v 2.52.2.7 2009/03/26 23:06:05 irmen Exp $
+#	$Id: util.py,v 2.52.2.8 2009/07/12 15:38:25 irmen Exp $
 #	Pyro Utilities
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -16,7 +16,7 @@ from Pyro.util2 import *	# bring in 'missing' util functions
 
 
 # bogus lock class, for systems that don't have threads.
-class BogusLock:
+class BogusLock(object):
 	def acquire(self): pass
 	def release(self): pass
 
@@ -35,7 +35,7 @@ def getRLockObject():
 
 
 # bogus event class, for systems that don't have threads
-class BogusEvent:
+class BogusEvent(object):
 	def __init__(self):
 		self.flag=0
 	def isSet(self): return self.flag==1
@@ -75,7 +75,7 @@ if Pyro.config.PYRO_STDLOGGING:
 		if not os.path.isabs(Pyro.config.PYRO_USER_LOGFILE):
 			Pyro.config.PYRO_USER_LOGFILE=os.path.join(Pyro.config.PYRO_STORAGE, Pyro.config.PYRO_USER_LOGFILE)
 
-	class LoggerBase:
+	class LoggerBase(object):
 		if externalConfig:
 			def __init__(self):
 				self.logger=logging.getLogger(self._getLoggerName())
@@ -137,7 +137,7 @@ if Pyro.config.PYRO_STDLOGGING:
 else:
 	# classic Pyro logging. 
 	
-	class LoggerBase:
+	class LoggerBase(object):
 		# Logger base class. Subclasses must override _logfile and  _checkTraceLevel.
 		def __init__(self):
 			self.lock=getLockObject()
@@ -208,7 +208,7 @@ Log = SystemLogger()
 # Caching directory lister, outputs (filelist,dirlist) tuple
 # Based upon dircache.py, but implemented in a callable object
 # that has a thread-safe cache.
-class DirLister:
+class DirLister(object):
 	def __init__(self):
 		self.lock=getLockObject()
 		self.__listdir_cache = {}
@@ -243,7 +243,7 @@ listdir = DirLister()		# callable object
 
 
 # Fairly simple argument options parser. Like getopt(3).
-class ArgParser:
+class ArgParser(object):
 	def __init__(self):
 		pass
 	def parse(self, args, optionlist):

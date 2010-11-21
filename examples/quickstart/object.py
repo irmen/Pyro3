@@ -1,5 +1,5 @@
 
-class myObject:
+class myObject(object):
 	def method1(s, string):
 		return "Your string length is: "+str(len(string))
 	def method2(s, number):

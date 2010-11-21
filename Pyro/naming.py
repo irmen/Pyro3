@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: naming.py,v 2.64.2.24 2009/04/28 18:18:27 irmen Exp $
+#	$Id: naming.py,v 2.64.2.25 2009/07/12 15:38:25 irmen Exp $
 #	Pyro Name Server
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -29,7 +29,7 @@ Log = Pyro.util.Log
 #
 #############################################################################
 
-class NameServerLocator:
+class NameServerLocator(object):
 	def __init__(self, identification=None):
 		Pyro.core._checkInit()	# init required
 		self.identification=identification
@@ -190,7 +190,7 @@ class NameServerLocator:
 # names to absolute names. Because this is done in the proxy, each
 # client can have its own PYRO_NS_DEFAULTGROUP.
 
-class NameServerProxy:
+class NameServerProxy(object):
 	def __init__(self,URI,identification=None,noconnect=0):
 		self.URI = URI
 		self.objectID = URI.objectID
@@ -629,7 +629,7 @@ class NameServer(Pyro.core.ObjBase):
 #
 #############################################################################
 
-class NameSpaceSystemMeta:
+class NameSpaceSystemMeta(object):
 	def __init__(self, node, timestamp, owner):
 		self.timestamp=timestamp
 		self.owner=owner
@@ -643,7 +643,7 @@ class NameSpaceSystemMeta:
 		
 # All nodes in the namespace (groups, or namevalue pairs--leafs) have
 # a shared set of properties, most notably: meta information.
-class NameSpaceNode:
+class NameSpaceNode(object):
 	def __init__(self, name, meta, owner):
 		self.name=name
 		self.systemMeta = NameSpaceSystemMeta(self, time.time(), owner)
@@ -1122,7 +1122,7 @@ class bcRequestHandler(SocketServer.BaseRequestHandler):
 
 # The default BC request validator... accepts everything
 # You must subclass this for your own validators
-class BCReqValidator:
+class BCReqValidator(object):
 	def __call__(self, req, addr):
 		(cmd,self.sock)=req
 		self.addr=addr
@@ -1142,7 +1142,7 @@ class BCReqValidator:
 
 #############################################################################
 
-class NameServerStarter:
+class NameServerStarter(object):
 	def __init__(self, identification=None):
 		Pyro.core.initServer()
 		self.identification=identification

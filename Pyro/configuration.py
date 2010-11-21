@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: configuration.py,v 2.32.2.14 2009/04/01 09:46:14 irmen Exp $
+#	$Id: configuration.py,v 2.32.2.17 2009/12/06 17:16:47 irmen Exp $
 #	Sets up Pyro's configuration (Pyro.config).
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -70,19 +70,22 @@ _defaults= {
 	'PYRO_ONEWAY_THREADED': 1,
 	'PYROSSL_CERTDIR':		'$STORAGE/certs',			# (abs)
 	'PYROSSL_CA_CERT':		'ca.pem',
-	'PYROSSL_SERVER_CERT':	'server.pem',
-	'PYROSSL_CLIENT_CERT':	'client.pem',
+	'PYROSSL_CERT':	'host.pem',
+	'PYROSSL_KEY':	None,
 	'PYROSSL_POSTCONNCHECK': 1
 }
 
 # ---------------------- END OF DEFAULT CONFIGURATION VARIABLES -----
 
 
-class Config:
+class Config(object):
 
 	def __init__(self):
 		_defaults['PYRO_MULTITHREADED']=Pyro.util2.supports_multithreading()
 		self.__dict__[Pyro.constants.CFGITEM_PYRO_INITIALIZED] = 0
+
+	def __eq__(self, other):
+		return self.__dict__==other.__dict__
 
 	def setup(self, configFile):
 		reader = ConfigReader(_defaults)
@@ -137,7 +140,7 @@ class Config:
 
 
 
-class ConfigReader:
+class ConfigReader(object):
 	def __init__(self, defaults):
 		self.matcher=re.compile(r'^(\w+)\s*=\s*(\S*)')
 		self.items=defaults.copy()

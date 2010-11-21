@@ -1,4 +1,4 @@
-class sub1:
+class sub1(object):
 	def meth1(s,arg): return 'Dit is sub1.meth1!'
 class sub2(sub1):
 	def meth2(s,arg): return 'Dit is sub2.meth2!'

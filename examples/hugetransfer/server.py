@@ -9,7 +9,7 @@ import Pyro.core
 
 ######## testclass object
 
-class testclass:
+class testclass(object):
 	def transfer(self,data):
 		print 'received',len(data),'bytes'
 		return len(data)

@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: nsc.py,v 2.19.2.7 2009/03/27 14:30:29 irmen Exp $
+#	$Id: nsc.py,v 2.19.2.8 2009/07/12 15:38:25 irmen Exp $
 #	Pyro Name Server Control Tool
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -16,7 +16,7 @@ from Pyro.naming import NameServerLocator
 from Pyro.errors import NamingError, ConnectionDeniedError, PyroError
 from Pyro.protocol import getHostname
 
-class PyroNSControl:
+class PyroNSControl(object):
 	def args(self, args):
 		self.Args = Pyro.util.ArgParser()
 		self.Args.parse(args,'h:p:c:i:')

@@ -1,7 +1,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 8-example.html,v 2.21.2.2 2008/06/28 23:41:02 irmen Exp $ -->
+<!-- $Id: 8-example.html,v 2.21.2.5 2009/12/07 00:31:01 irmen Exp $ -->
 <head>
+  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
   <title>PYRO - Example</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -42,14 +43,18 @@ class JokeGen(Pyro.core.ObjBase):
         def joke(self, name):
                 return &quot;Sorry &quot;+name+&quot;, I don't know any jokes.&quot;
 
-Pyro.core.initServer()
-daemon=Pyro.core.Daemon()
-uri=daemon.connect(JokeGen(),&quot;jokegen&quot;)
+def main():
+    Pyro.core.initServer()
+    daemon=Pyro.core.Daemon()
+    uri=daemon.connect(JokeGen(),&quot;jokegen&quot;)
 
-print &quot;The daemon runs on port:&quot;,daemon.port
-print &quot;The object's uri is:&quot;,uri
+    print &quot;The daemon runs on port:&quot;,daemon.port
+    print &quot;The object's uri is:&quot;,uri
 
-daemon.requestLoop()
+    daemon.requestLoop()
+    
+if __name__==&quot;__main__&quot;:
+    main()
 </pre>
     </dd>
 
@@ -83,12 +88,16 @@ class JokeGen(Pyro.core.ObjBase):
         def joke(self, name):
                 return &quot;Sorry &quot;+name+&quot;, I don't know any jokes.&quot;
 
-Pyro.core.initServer()
-ns=Pyro.naming.NameServerLocator().getNS()
-daemon=Pyro.core.Daemon()
-daemon.useNameServer(ns)
-uri=daemon.connect(JokeGen(),&quot;jokegen&quot;)
-daemon.requestLoop()
+def main():
+    Pyro.core.initServer()
+    ns=Pyro.naming.NameServerLocator().getNS()
+    daemon=Pyro.core.Daemon()
+    daemon.useNameServer(ns)
+    uri=daemon.connect(JokeGen(),&quot;jokegen&quot;)
+    daemon.requestLoop()
+
+if __name__==&quot;__main__&quot;:
+    main()
 </pre>
     </dd>
 
@@ -265,10 +274,6 @@ NS is at 10.0.0.150 (isengard.lan) port 9090
 2005-03-13 13:23:40   Pyro Initializing, version 3.7
 This is initServer.
 Configuration settings are as follows:
-PYROSSL_CA_CERT = ca.pem
-PYROSSL_CERTDIR = E:\temp\certs
-PYROSSL_CLIENT_CERT = client.pem
-PYROSSL_SERVER_CERT = server.pem
 PYRO_BC_RETRIES = 2
 PYRO_BC_TIMEOUT = 2
 PYRO_CHECKSUM = 0

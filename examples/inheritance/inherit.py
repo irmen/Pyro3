@@ -1,13 +1,13 @@
 from ftplib import FTP
 import Pyro.core
 
-class base1:
+class base1(object):
 	def meth1(self):
 		return 'base1.meth1'
 	def meth2(self):
 		return 'base1.meth2'
 
-class base2:
+class base2(object):
 	def meth2(self):
 		return 'base2.meth2'
 	def meth3(self):

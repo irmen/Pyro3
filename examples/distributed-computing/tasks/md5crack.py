@@ -107,7 +107,7 @@ class CrackTaskPartition(tasks.task.TaskPartition):
 #
 # The 'user interface' for the md5 task.
 #
-class UserInterface:
+class UserInterface(object):
 	def begin(self):
 		print "MD5 'cracking'."
 		code=raw_input("Enter a short word (4-5 lowercase letters; a-z) that is the key: ")

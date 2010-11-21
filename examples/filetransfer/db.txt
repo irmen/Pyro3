@@ -1,0 +1,13 @@
+CREATE TABLE test (
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR,
+    age INTEGER
+);
+
+INSERT INTO test VALUES(NULL, "irmen", 34);
+INSERT INTO test VALUES(NULL, "harriet", 31);
+INSERT INTO test VALUES(NULL, "hotze", 62);
+
+select * from test;
+
+    

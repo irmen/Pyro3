@@ -1,5 +1,5 @@
 
-class ParameterBase:
+class ParameterBase(object):
 	def __init__(self, basename):
 		self.basename=basename
 	def basemethod(self):

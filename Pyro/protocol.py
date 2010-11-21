@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: protocol.py,v 2.94.2.32 2009/03/28 15:53:17 irmen Exp $
+#	$Id: protocol.py,v 2.94.2.38 2009/12/06 17:16:47 irmen Exp $
 #	Pyro Protocol Adapters
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -185,8 +185,8 @@ PFLG_CHECKSUM =   0x02		# protocol flag: checksum body
 PFLG_XMLPICKLE_GNOSIS =  0x04		# protocol flag: used xml pickling (Gnosis)
 
 
-class PYROAdapter:
-	headerFmt = '!4sHHlHl'	# version 4 header (id, ver, hsiz,bsiz,pflags,crc)
+class PYROAdapter(object):
+	headerFmt = '!4sHHlHl'	# header (id, ver, hsiz,bsiz,pflags,crc)
 	headerID = 'PYRO'
 	connectMSG='CONNECT'
 	acceptMSG= 'GRANTED'
@@ -196,7 +196,7 @@ class PYROAdapter:
 	AUTH_CHALLENGE_SIZE = 16
 
 	headerSize = struct.calcsize(headerFmt)
-	version=4				# version 4 protocol
+	version=5				# version 5 protocol
 	def __init__(self):
 		self.onewayMethods=[]		# methods that should be called one-way
 		self.timeout=None			# socket timeout
@@ -210,7 +210,8 @@ class PYROAdapter:
 	def __del__(self):
 		self.release(nolog=1)
 	def __getstate__(self):
-		# need to tweak the pickle because lock objects can't be pickled
+		# need to tweak the pickle because lock objects and conn objects can't be pickled
+		self.release()   # cannot pickle the active connection so just release it
 		d=self.__dict__.copy()
 		del d["lock"]
 		del d["bindlock"]
@@ -656,6 +657,7 @@ class PYROAdapter:
 				# received a oneway call, run this in its own thread.
 				thread=Thread(target=self._handleInvocation2, args=(daemon,req,pflags,conn,o))
 				thread.setDaemon(1)   # thread must exit at program termination.
+				thread.localStorage=daemon.getLocalStorage()   # set local storage for the new thread
 				thread.start()
 			else:
 				# not oneway or not in threaded mode, just do the invocation synchronously
@@ -762,10 +764,10 @@ class PYROAdapter:
 			return 0
 
 # import wrapper class to help with importing remote modules
-class agent_import:
+class agent_import(object):
 	def __init__(self, orig_import):
 		self.orig_import=orig_import
-	def __call__(self,name,iglobals={},ilocals={},fromlist=None, *rest):
+	def __call__(self,name,iglobals={},ilocals={},fromlist=None, *rest, **krest):
 		if os.name=="java":
 			# workaround for odd Jython bug, iglobals and ilocals may not exist in this scope...(?!)
 			iglobals=vars().get("iglobals",{})
@@ -773,7 +775,7 @@ class agent_import:
 		# save the import details:
 		self.name=name		# note: this must be a str object
 		self.fromlist=fromlist
-		return self.orig_import(name,iglobals,ilocals,fromlist, *rest)
+		return self.orig_import(name,iglobals,ilocals,fromlist, *rest, **krest)
 
 #
 # The SSL adapter that handles SSL connections instead of regular sockets.
@@ -787,7 +789,12 @@ class PYROSSLAdapter(PYROAdapter):
 			raise ProtocolError('SSL not available')
 
 		self.ctx = SSL.Context('sslv23')
-		self.ctx.load_cert(os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_CLIENT_CERT))
+		if Pyro.config.PYROSSL_KEY:
+			keyfile = os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_KEY)
+		else:
+			keyfile = None
+		self.ctx.load_cert(os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_CERT),
+				   keyfile)
 		self.ctx.load_client_ca(os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_CA_CERT))
 		self.ctx.load_verify_info(os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_CA_CERT))
 		self.ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert,10)
@@ -842,7 +849,7 @@ def getProtocolAdapter(protocol):
 
 
 #-------- TCPConnection object for TCPServer class
-class TCPConnection:
+class TCPConnection(object):
 	def __init__(self, sock, addr):
 		self.sock = sock
 		set_sock_keepalive(self.sock)   # enable tcp/ip keepalive on this socket
@@ -867,7 +874,7 @@ class TCPConnection:
 #-------- DefaultConnValidator checks max number of connections & identification
 #-------- and ident check is done using hmac-md5 secure hash of passphrase+challenge.
 #-------- Contains client- & server-side auth code.
-class DefaultConnValidator:
+class DefaultConnValidator(object):
 	def __init__(self):
 		self.setAllowedIdentifications(None)	# default=accept all (None means all!)
 	def acceptHost(self,daemon,connection):
@@ -932,14 +939,14 @@ class BasicSSLValidator(DefaultConnValidator):
 
 
 #-------- Helper class for local storage.
-class LocalStorage:
+class LocalStorage(object):
 	def __init__(self):
 		self.caller=None
 
 #-------- TCPServer base class
 
 
-class TCPServer:
+class TCPServer(object):
 	def __init__(self, port, host='', threaded=_has_threading,prtcol='PYRO'):
 		self._ssl_server = 0
 		self.connections = []  # connection threads
@@ -954,7 +961,12 @@ class TCPServer:
 					raise ProtocolError('SSL not available')
 				try:
 					self.ctx = SSL.Context('sslv23')
-					self.ctx.load_cert(os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_SERVER_CERT))
+					if Pyro.config.PYROSSL_KEY:
+						keyfile = os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_KEY)
+					else:
+						keyfile = None
+					self.ctx.load_cert(os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_CERT),
+							   keyfile)
 					self.ctx.load_client_ca(os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_CA_CERT))
 					self.ctx.load_verify_info(os.path.join(Pyro.config.PYROSSL_CERTDIR, Pyro.config.PYROSSL_CA_CERT))
 					self.ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert,10)

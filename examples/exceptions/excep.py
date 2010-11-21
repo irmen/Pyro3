@@ -1,7 +1,7 @@
 class MyError(Exception):
 	pass
 
-class testclass:
+class testclass(object):
 	def div(s, arg1, arg2): return arg1/arg2
 	def error(s):           raise ValueError('a valueerror! Great!')
 	def error2(s):           return ValueError('a valueerror! Great!')
@@ -12,7 +12,7 @@ class testclass:
 		x.crash()
 
 
-class foo:
+class foo(object):
 	def crash(s):
 		s.crash2('going down...')
 	def crash2(s, arg):

@@ -8,7 +8,7 @@ import Pyro.core
 
 ######## testclass object
 
-class testclass:
+class testclass(object):
 	def setname(self,name):
 		self.name=name
 	def getname(self):

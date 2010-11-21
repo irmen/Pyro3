@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: core.py,v 2.104.2.25 2009/03/29 20:19:27 irmen Exp $
+#	$Id: core.py,v 2.104.2.30 2009/12/06 23:55:26 irmen Exp $
 #	Pyro Core Library
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -39,7 +39,7 @@ def _checkInit(pyrotype="client"):
 #
 #############################################################################
 
-class ObjBase:
+class ObjBase(object):
 	def __init__(self):
 		self.objectGUID=Pyro.util.getGUID()
 		self.delegate=None
@@ -253,7 +253,7 @@ class CallbackObjBase(ObjBase):
 #
 #############################################################################
 
-class PyroURI:
+class PyroURI(object):
 	def __init__(self,host,objectID=0,port=0,prtcol='PYRO'):
 		# if the 'host' arg is a PyroURI, copy contents
 		if isinstance(host, PyroURI):
@@ -372,7 +372,7 @@ def getProxyForURI(URI):
 def getAttrProxyForURI(URI):
 	return DynamicProxyWithAttrs(URI)
 
-class _RemoteMethod:
+class _RemoteMethod(object):
 	# method call abstraction, adapted from Python's xmlrpclib
 	# it would be rather easy to add nested method calls, but
 	# that is not compatible with the way that Pyro's method
@@ -383,7 +383,7 @@ class _RemoteMethod:
 	def __call__(self, *args, **kwargs):
 		return self.__send(self.__name, args, kwargs)
 
-class DynamicProxy:
+class DynamicProxy(object):
 	def __init__(self, URI):
 		_checkInit() # init required
 		if type(URI) in (StringType,UnicodeType):
@@ -428,7 +428,7 @@ class DynamicProxy:
 	def __deepcopy__(self, arg):
 		raise PyroError("cannot deepcopy a proxy")
 	def __getattr__(self, name):
-		if name=="__getinitargs__":			# allows it to be safely pickled
+		if name in ("__getnewargs__","__getinitargs__"):		# allows it to be safely pickled
 			raise AttributeError()
 		return _RemoteMethod(self._invokePYRO, name)
 	def __repr__(self):
@@ -461,18 +461,17 @@ class DynamicProxy:
 	# Pickling support, otherwise pickle uses __getattr__:
 	def __getstate__(self):
 		# for pickling, return a non-connected copy of ourselves:
-		copy = self.__copy__()
-		copy._release()
-		return copy.__dict__
+		cpy = self.__copy__()
+		cpy._release()
+		return cpy.__dict__
 	def __setstate__(self, args):
-		# this appears to be necessary otherwise pickle won't work
-		self.__dict__=args
+		# for pickling, to restore the pickled state
+		self.__dict__.update(args)
 
 	
 class DynamicProxyWithAttrs(DynamicProxy):
+	_local_attrs = ("_local_attrs","URI", "objectID", "adapter", "_attr_cache")
 	def __init__(self, URI):
-		# first set the list of 'local' attrs for __setattr__
-		self.__dict__["_local_attrs"] = ("_local_attrs","URI", "objectID", "adapter", "_name", "_attr_cache")
 		self._attr_cache = {}
 		DynamicProxy.__init__(self, URI)
 	def _r_ga(self, attr, value=0):
@@ -489,7 +488,7 @@ class DynamicProxyWithAttrs(DynamicProxy):
 	def __copy__(self):		# create copy of current proxy object
 		return DynamicProxyWithAttrs(self.URI)
 	def __setattr__(self, attr, value):
-		if attr in self.__dict__["_local_attrs"]:
+		if attr in self._local_attrs:
 			self.__dict__[attr]=value
 		else:
 			result = self.findattr(attr)
@@ -499,7 +498,7 @@ class DynamicProxyWithAttrs(DynamicProxy):
 				raise AttributeError('not an attribute')
 	def __getattr__(self, attr):
 		# allows it to be safely pickled
-		if attr not in ("__getinitargs__", "__hash__","__eq__","__ne__") and attr not in self.__dict__["_local_attrs"]:
+		if attr not in ("__getnewargs__","__getinitargs__", "__hash__","__eq__","__ne__") and attr not in self._local_attrs:
 			result=self.findattr(attr)
 			if result==1: # method
 				return _RemoteMethod(self._invokePYRO, attr)
@@ -714,22 +713,29 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 		obj.setPyroDaemon(self)
 		return URI
 
-	def disconnect(self,obj):
+	def disconnect(self,obj):		# obj can be either the object that was registered, or its uid
 		try:
-			if self.NameServer and self.implementations[obj.GUID()][1]:
+			if isinstance(obj,Pyro.core.ObjBase):
+				obj_uid=obj.GUID()
+			else:
+				obj_uid=str(obj)
+			if obj_uid==Pyro.constants.INTERNAL_DAEMON_GUID:
+				return   # never allow to remove ourselves from the registry
+			if self.NameServer and self.implementations[obj_uid][1]:
 				self.nscallMutex.acquire()
 				try:
 					# only unregister with NS if it had a name (was not transient)
-					self.NameServer.unregister(self.implementations[obj.GUID()][1])
+					self.NameServer.unregister(self.implementations[obj_uid][1])
 				finally:
 					self.nscallMutex.release()
-			del self.implementations[obj.GUID()]
-			if obj.GUID() in self.persistentConnectedObjs:
-				self.persistentConnectedObjs.remove(obj.GUID())
+			del self.implementations[obj_uid]
+			if obj_uid in self.persistentConnectedObjs:
+				self.persistentConnectedObjs.remove(obj_uid)
 			# XXX Clean up connections/threads to this object?
 			#     Can't be done because thread/socket is not associated with single object 
 		finally:
-			obj.setPyroDaemon(None)
+			if isinstance(obj,Pyro.core.ObjBase):
+				obj.setPyroDaemon(None)
 
 	def getRegistered(self):
 		r={}

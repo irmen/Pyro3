@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: Clients.py,v 2.18.2.1 2009/03/28 23:12:54 irmen Exp $
+#	$Id: Clients.py,v 2.18.2.3 2009/12/06 22:47:19 irmen Exp $
 #	Event Service client base classes
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -10,6 +10,7 @@
 
 import Pyro.core, Pyro.naming, Pyro.constants
 import Pyro.EventService.Server
+from Pyro.EventService.Event import Event
 from Pyro.errors import *
 
 # SUBSCRIBER: subscribes to certain events.
@@ -64,7 +65,7 @@ class Subscriber(Pyro.core.CallbackObjBase):
 		print event
 
 # PUBLISHER: publishes events.
-class Publisher:
+class Publisher(object):
 	def __init__(self, ident=None, esURI=None):
 		Pyro.core.initClient()
 		if esURI:

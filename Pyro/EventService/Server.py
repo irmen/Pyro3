@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: Server.py,v 2.37.2.7 2009/03/28 23:12:54 irmen Exp $
+#	$Id: Server.py,v 2.37.2.9 2009/12/06 22:47:19 irmen Exp $
 #	Event Service daemon and server classes
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -11,21 +11,11 @@
 import time, types, re, sys, traceback, os
 import Pyro.core, Pyro.naming, Pyro.util, Pyro.constants
 from Pyro.errors import *
+from Pyro.EventService.Event import Event
 import Queue
 from threading import Thread
 
 Log=Pyro.util.Log
-
-
-# EVENT - the thing that is published. Has a subject and contains a message.
-class Event:
-	def __init__(self, subject, msg, creationTime=None):
-		self.msg=msg
-		self.subject=subject
-		self.time=creationTime or time.time()
-	def __str__(self):
-		return "<EVENT SUBJ %s (%s): %s>" % (self.subject, time.ctime(self.time), str(self.msg))
-
 
 # SUBSCRIBER - each subscriber has one of these worker threads
 class Subscriber(Thread):
@@ -167,7 +157,7 @@ class EventService(Pyro.core.ObjBase):
 		del self.subscriptionWorkers[subscriber]
 
 
-class EventServiceStarter:
+class EventServiceStarter(object):
 	def __init__(self, identification=None):
 		Pyro.core.initServer()
 		self.running=1

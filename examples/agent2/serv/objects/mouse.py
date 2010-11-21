@@ -1,5 +1,5 @@
 
-class mouse:
+class mouse(object):
 	def __init__(self):
 		pass
 	def getName(self):

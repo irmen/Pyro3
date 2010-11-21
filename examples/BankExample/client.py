@@ -15,7 +15,7 @@ from banks import BankError
 group = ':banks1'  # the default namespace group
 
 # A bank client.
-class client:
+class client(object):
 	def __init__(self,name):
 		self.name=name
 	def doBusiness(self, bank):

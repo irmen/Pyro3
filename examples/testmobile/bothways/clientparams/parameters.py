@@ -1,5 +1,5 @@
 
-class ClientParameter:
+class ClientParameter(object):
 	def __init__(self, name):
 		self.name=name
 	def method(self):

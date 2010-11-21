@@ -1,7 +1,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 7-features.html,v 2.55.2.11 2009/04/03 23:44:44 irmen Exp $ -->
+<!-- $Id: 7-features.html,v 2.55.2.13 2009/12/07 00:31:01 irmen Exp $ -->
 <head>
+  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
   <title>PYRO - Features and Guidelines</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -148,7 +149,7 @@
         to make sure they reuse the same port every time.
         The reason this is needed is that the rebinding of the proxy will use the PYRO:// uri that is
         stored in the proxy. That URI only contains the exact location of the object in a specific daemon.
-        No new naming lookup via the name server is done.</li>
+        No new naming lookup via the name server is done.
     </li>
   </ol>
   You're probably wondering &quot;Why isn't this transparent? Why no PYRO_AUTOREBIND config item?&quot; The
@@ -338,7 +339,7 @@ for instance).</p>
   use the <code>caller</code> object to access any
   specific data associated with the connection, that you have stored there yourself (for instance, the
   authentication id placed as an attribute on it from within a custom connection validator). See the
-  &quot;user_passwd_auth&quot; example.</p> It puts it there to be able to uniquely identify the client,
+  &quot;user_passwd_auth&quot; example. It puts it there to be able to uniquely identify the client,
   rather than just the calling proxy.
 
   <p><strong>How do you initialize the TLS?</strong> Pyro allocates the TLS as soon as it's needed. You cannot
@@ -677,7 +678,7 @@ def __init__(self):
 
         <li>disconnect the object form the Pyro Daemon if you're done with it (don't just del it)
           <pre>
-   self.getDaemon().disconnect(object)
+   self.getDaemon().disconnect(object)     # can also pass object's UID
    del object
 </pre>
         </li>
@@ -723,7 +724,7 @@ def __iadd__(self,value):
         request arrives.</li>
 
     <li>Consider disconnecting objects from the daemon if you don't need them anymore;
-    <code>daemon.disconnect(object)</code></li>
+    <code>daemon.disconnect(object)</code>   (you can disconnect the object directly or provide its UID)</li>
 
     <li>Be careful when using large data structures. For instance, when you are getting an element from a dictionary
     using attribute access on the remote object (like this: <code>value=remoteObject.somedict['somekey']</code>) Pyro

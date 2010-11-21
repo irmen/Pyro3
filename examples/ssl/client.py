@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 import Pyro.core
 
-Pyro.core.initClient()
+Pyro.config.PYRO_DNS_URI=True
+Pyro.config.PYROSSL_CERT="client.pem"
+# Pyro.config.PYROSSL_KEY="client.key"
 
 def sendMsg(obj):
 	message="Irmen de Jong is a space alien"

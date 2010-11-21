@@ -1,7 +1,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 3-install.html,v 2.44.2.12 2009/03/26 21:27:26 irmen Exp $ -->
+<!-- $Id: 3-install.html,v 2.44.2.14 2009/12/07 00:31:00 irmen Exp $ -->
 <head>
+  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
   <title>PYRO - Installation</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -515,44 +516,33 @@
 
     <tr>
       <td><code>PYROSSL_CERTDIR</code></td>
-
       <td>string</td>
-
       <td>The directory where openssl certificates are stored.</td>
-
       <td>'certs' in the PYRO_STORAGE location.</td>
     </tr>
 
     <tr>
       <td><code>PYROSSL_CA_CERT</code></td>
-
       <td>string</td>
-
       <td>Certificate of the Certificate Authority. Used to check if client and server certificates are valid (that
       they are signed by the given CA)</td>
-
       <td>ca.pem</td>
     </tr>
 
     <tr>
-      <td><code>PYROSSL_SERVER_CERT</code></td>
-
+      <td><code>PYROSSL_CERT</code></td>
       <td>string</td>
-
-      <td>Certificate for server side</td>
-
-      <td>server.pem</td>
+      <td>Certificate file for SSL</td>
+      <td>host.pem</td>
     </tr>
 
     <tr>
-      <td><code>PYROSSL_CLIENT_CERT</code></td>
-
+      <td><code>PYROSSL_KEY</code></td>
       <td>string</td>
-
-      <td>Certificate for client side</td>
-
-      <td>client.pem</td>
+      <td>Optional SSL key file (required if your host key is not part of the certificate file)</td>
+      <td><i>None</i></td>
     </tr>
+
     <tr>
       <td><code>PYROSSL_POSTCONNCHECK</code></td>
 

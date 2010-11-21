@@ -1,5 +1,5 @@
 
-class spices:
+class spices(object):
 	def __init__(self):
 		pass
 	def getName(self):

@@ -1,7 +1,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 10-errors.html,v 2.30.2.5 2009/03/28 11:52:19 irmen Exp $ -->
+<!-- $Id: 10-errors.html,v 2.30.2.7 2009/12/07 00:31:00 irmen Exp $ -->
 <head>
+  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
   <title>PYRO - Errors and Troubleshooting</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -29,8 +30,8 @@
   <p>The <a href="#specificissues">Specific issues</a> section at the end contains more detailed discussion of specific issues you may encounter:
   	<ul>
   		<li>127.0.0.1 connection problems</li>
+  		<li>problems when using user defined exception classes</li>
   	</ul>
-  	</p>
 
   <h3><a name="errors" id="errors"></a>Pyro Errors</h3>
 
@@ -595,7 +596,31 @@ There are several options to fix this problem:
 	<li>Fix your DNS server to return the correct IP address for your host if it returns 127.0.0.1</li>
 	<li>Use the appropriate command line options for the Name Server or Event Server script tools to bind it to a different hostname.</li>
 </ul>      
-  </p>
+
+  <h4>Problems with user defined exception classes</h4>
+  <p>In Python 2.5 and later, there is an issue with user-defined exceptions. Say you have a custom exception class written as follows:</p>
+  <pre>class MyEx(Exception):
+    def __init__(self, mymessage):
+        self.mymessage=mymessage
+    def __str__(self):
+        return "[MyEx '%s']" % self.mymessage
+</pre>
+<p>If you are passing these exceptions over the wire in Pyro method calls, you will find that your program crashes with an error like this:</p>
+<pre>TypeError: ('__init__() takes exactly 2 arguments (1 given)', &lt;class '__main__.MyEx'&gt;, ())</pre>
+<p>
+This is not Pyro's fault: it is caused by a change in the Exception classes which was introduced in Python 2.5. 
+This change seems to cause that Exception objects don't follow the usual pickle protocol.
+The unpickling of the exception object fails, because the <code>__init__</code> method is called without any arguments
+(it shouldn't even be called at all by the way!).
+Unfortunately, you won't be able to fix this problem by writing a <code>__getinitargs__</code> or <code>__getnewargs__</code> method to force the correct parameters, because these methods won't be called.
+The easiest way to work around this problem now seems to change the init method so that it uses <code>*args</code> instead of a single argument (this is what the built in Exceptions seem to do), or change it a little so that it also works with zero arguments:
+</p>
+<pre>    def __init__(self, mymessage=None):
+        self.mymessage=mymessage
+</pre>
+<p>
+If you don't need any special behavior of your own exception objects, it is probably best to just subclass them from Exception and not define any custom methods or properties. That avoids the problem as well. All builtin exceptions should accept a string argument to be used as the exception message, so there is no need to subclass the exception and add custom behavior as shown above, if you just want to remember a message string.
+</p>
   
   
   <div class="nav">

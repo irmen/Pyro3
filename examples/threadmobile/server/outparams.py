@@ -1,5 +1,5 @@
 
-class ResultParameter:
+class ResultParameter(object):
 	def __init__(self, name):
 		self.name=name
 	def method(self):

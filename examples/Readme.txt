@@ -18,6 +18,7 @@ chatbox-non-ES    - a chat server and client not using the Event Server
 circle            - shows circular and conversation communication.
 countingcars      - a more advanced Event Service example
 denyhosts         - shows how to use a custom newConnectionValidator, to block or grant connection access to certain hosts.
+disconnect        - shows the different ways in which you can disconnect objects from the daemon
 distributed-computing  - a computational task (md5 cracking or merge sorting) is distributed among concurrently operating processors (push-style). Uses ES for progress monitoring
 distributed-computing2 - a computational task (prime factorization) is distributed among concurrently operating processors (pull-style).
 exceptions        - remote exceptions test
@@ -33,6 +34,7 @@ naming            - shows naming functions
 NS_sec_plugins    - shows the connection validator plugin feature of the NS
 noNS              - how to use Pyro without a Name Server (not recommended)
 oneway            - shows how oneway calls work in the background
+pickle            - check pickleability of various Pyro objects.
 proxysharing      - shows the sharing of proxies over different threads
 quickstart        - shows the use of the Pyro.ext.remote module which makes using Pyro extremely easy, and a 'pyrorun' script which makes it even easier (no more server code needed!)
 quickstart-noNS   - like "quickstart" but doesn't use the Name Server
