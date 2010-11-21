@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: xnsc.py,v 2.15.2.4 2008/06/01 09:45:35 irmen Exp $
+#	$Id: xnsc.py,v 2.15.2.6 2009/03/27 14:30:29 irmen Exp $
 #	Pyro Name Server Control Tool with GUI 
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -10,8 +10,8 @@
 
 import sys, time
 from Tkinter import *
-from naming import NameServerLocator
-from errors import NamingError, ConnectionClosedError
+from Pyro.naming import NameServerLocator
+from Pyro.errors import NamingError, ConnectionClosedError
 import Pyro.core
 
 class xnscFrame:
@@ -340,8 +340,12 @@ class xnscFrame:
 def main(argv):
 	Pyro.core.initClient()
 	root=Tk()
-	root.title('xnsc - Pyro Name Server control tool')
+	root.title('xnsc - Pyro Name Server control tool - Pyro version '+Pyro.constants.VERSION)
 	app=xnscFrame(root)
 	root.protocol('WM_DELETE_WINDOW',root.quit)
 	root.mainloop()
 
+# allow easy usage with python -m
+if __name__=="__main__":
+	import sys
+	main(sys.argv)

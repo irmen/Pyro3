@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: Clients.py,v 2.18 2007/03/07 21:49:54 irmen Exp $
+#	$Id: Clients.py,v 2.18.2.1 2009/03/28 23:12:54 irmen Exp $
 #	Event Service client base classes
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -14,16 +14,20 @@ from Pyro.errors import *
 
 # SUBSCRIBER: subscribes to certain events.
 class Subscriber(Pyro.core.CallbackObjBase):
-	def __init__(self, ident=None):
+	def __init__(self, ident=None, esURI=None):
 		Pyro.core.CallbackObjBase.__init__(self)
 		Pyro.core.initServer()
 		Pyro.core.initClient()
 		daemon = Pyro.core.Daemon()
-		locator = Pyro.naming.NameServerLocator(identification=ident)
-		self.NS = locator.getNS(host=Pyro.config.PYRO_NS_HOSTNAME)
-		daemon.useNameServer(self.NS)
+		if esURI:
+			check=Pyro.core.PyroURI(esURI)
+			self.ES_uri=esURI
+		else:		
+			locator = Pyro.naming.NameServerLocator(identification=ident)
+			self.NS = locator.getNS(host=Pyro.config.PYRO_NS_HOSTNAME)
+			daemon.useNameServer(self.NS)
+			self.ES_uri = self.NS.resolve(Pyro.constants.EVENTSERVER_NAME)
 		daemon.connect(self)  #  will also set self.daemon...
-		self.ES_uri = self.NS.resolve(Pyro.constants.EVENTSERVER_NAME)
 		self.ES_ident=ident
 		self.abortListen=0
 		self.daemon=daemon	# make sure daemon doesn't get garbage collected now
@@ -61,13 +65,17 @@ class Subscriber(Pyro.core.CallbackObjBase):
 
 # PUBLISHER: publishes events.
 class Publisher:
-	def __init__(self, ident=None):
+	def __init__(self, ident=None, esURI=None):
 		Pyro.core.initClient()
-		locator = Pyro.naming.NameServerLocator(identification=ident)
-		ns = locator.getNS(host=Pyro.config.PYRO_NS_HOSTNAME)
-		self.ES_uri = ns.resolve(Pyro.constants.EVENTSERVER_NAME)
+		if esURI:
+			check=Pyro.core.PyroURI(esURI)
+			self.ES_uri=esURI
+		else:
+			locator = Pyro.naming.NameServerLocator(identification=ident)
+			ns = locator.getNS(host=Pyro.config.PYRO_NS_HOSTNAME)
+			self.ES_uri = ns.resolve(Pyro.constants.EVENTSERVER_NAME)
+			ns._release()   # be very sure to release the socket
 		self.ES_ident = ident
-		ns._release()   # be very sure to release the socket
 
 	def getES(self):
 		# we get a fresh proxy to the ES because of threading issues.

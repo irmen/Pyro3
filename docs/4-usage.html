@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 4-usage.html,v 2.37.2.6 2008/06/28 23:41:02 irmen Exp $ -->
+<!-- $Id: 4-usage.html,v 2.37.2.11 2009/04/02 00:40:54 irmen Exp $ -->
 <head>
   <title>PYRO - Usage</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -35,6 +35,8 @@
     <li><a href="#runtime">Runtime setup</a></li>
 
     <li><a href="#runtimectrl">Runtime control and Logging</a></li>
+
+    <li><a href="#sessions">Threads, sessions and objects</a></li>
 
     <li><a href="#notes">Last Notes</a></li>
   </ul>
@@ -91,19 +93,19 @@ command files have the '.cmd' extension. </p>
   <dl>
     <dt><code>pyro-genguid</code> &nbsp;&nbsp;(GUID generator)</dt>
 
-    <dd>- No arguments<br>
-    - This is a very simple GUID generator. It uses the internal Pyro GUID generator to print a new GUID.<br>
-    <br></dd>
+    <dd>No arguments.</dd>
+    <dd>This is a very simple GUID generator. It uses the internal Pyro GUID generator to print a new GUID.</dd>
+    <br>
 
     <dt><code>pyro-ns, pyro-rns</code> &nbsp;&nbsp;(Name Server)</dt>
 
-    <dd>These scripts are explained in the <a href="5-nameserver.html#cmds">Name Server chapter</a>.<br>
-    <br></dd>
+    <dd>These scripts are explained in the <a href="5-nameserver.html#cmds">Name Server chapter</a>.</dd>
+    <br>
 
     <dt><code>pyro-es</code> &nbsp;&nbsp;(Event Server)</dt>
 
-    <dd>This script is explained in the <a href="11-services.html#event">Event Server (Pyro Services) chapter</a>.<br>
-    <br></dd>
+    <dd>This script is explained in the <a href="11-services.html#event">Event Server (Pyro Services) chapter</a>.</dd>
+    <br>
 
     <dt><code>pyro-nsc</code> &nbsp;&nbsp;(Name Server Control tool)</dt>
 
@@ -165,7 +167,15 @@ command files have the '.cmd' extension. </p>
     <dd>These scripts are explained in the <a href="5-nameserver.html#cmds">Name Server chapter</a> and the <a href=
     "6-eventserver.html#starting">Event Server chapter</a>.<br>
     <br></dd>
+    
+    <dt>Using <code>python -m</code> to start various tools</dt>
+    <dd><code>python -m Pyro.naming</code> - start the name server</dd>
+    <dd><code>python -m Pyro.EventService.Server</code> - start the event server</dd>
+    <dd><code>python -m Pyro.nsc</code> - start the nsc tool. Also works with xnsc and wxnsc.</dd>
+    <dd><code>python -m Pyro.configuration</code> - print a dump of Pyro's active configuration settings.</dd>
+    
   </dl>
+  
 
   <h3><a name="class" id="class"></a>Steps 1, 2 and 3: Writing the remote class</h3>Just create a Python module
   containing the classes you want to access remotely. There are some restrictions induced by Pyro:
@@ -385,7 +395,7 @@ see the paragraph below.
       daemon.handleRequests(3.0)
       ... do something when a timeout occured ...
 </pre>The timeout value in this example is three seconds. The call to <code>handleRequests</code> returns when the
-timeout period has passed, or when at least one request was processed. You could use '<code>0</code>' for timeout, but
+timeout period has passed, or when a new proxy object got a connection to the daemon. You could use '<code>0</code>' for timeout, but
 this means the call returns directly if no requests are pending. If you want infinite timeout, use '<code>None</code>'.
 You can also provide additional objects the daemon should wait on (multiplexing), to avoid having to split your program
 into multiple threads. You pass those objects, including a special callback function, as follows:
@@ -597,6 +607,39 @@ support broadcasting, or the NS can't be reached by a broadcast (because it sits
       including multiple lines.
     </li>
   </ul>
+
+  <h3><a name="sessions" id="sessions"></a>Threads, sessions and objects</h3>
+  <p>For more complex uses of Pyro, it is important to understand how Pyro uses threads and how the objects interact.
+Below are, in condensed form, the rules Pyro follows. 
+For detailed information about these subjects, please refer to the relevant chapters elsewhere in the manual.
+</p>
+<ul>
+	<li>A Pyro server object is only created once. The same instance is reused over and over by the Daemon. It is never deleted, unless the Daemon itself shuts down or
+		the object is explicitly disconnected from it.</li>
+	<li>Nameless ('transient') objects created on the server are not automatically deleted, the follow the same rules. You can use Pyro's transient object timeout feature to get rid of them.</li>
+	<li>Pyro server objects may be accessed from multiple threads at the same time. So they need to be reentrant (threadsafe).</li>
+	<li>A thread is created for every distinct connection that is created to the Daemon.</li>
+	<li>A connection is a link between a Pyro proxy object and a Pyro Daemon. A proxy object has exactly one connection to a Daemon,
+		a Daemon can have lots of connected proxy objects.</li>
+	<li>Every distinct proxy object has its own connection. That means that when you create a new proxy object,
+	a new connection will be made to the Daemon, and a new thread to handle the method calls will be spawned.</li>
+	<li>Multiple method calls can occur over a single connection, they are handled serially by the thread associated to the connection.
+		If you share a proxy object among several threads in your client application, all method calls
+		will be serialized. If you make a copy of the proxy object and use those in different threads in your client application,
+		the method calls will not be serialized and the server object will process them concurrently.</li>
+	<li>'oneway' calls can be an exception and can execute in their own short-lived thread.</li>
+	<li>TLS can be used to store objects that must be unique to a <em>thread</em> or to a <em>client session</em>.
+		For example, open files or database connection objects.</li>
+	<li>You can use the <code>caller</code> property of the TLS object if required: that object
+		 always equals the currently active client connection. Multithreaded or not.</li>
+	<li>If you disable multithreading using the config item, there will be only a single thread that
+		will be shared by all method calls from all proxies! There will only be one shared TLS as well!
+		If your code needs to be able to deal with this possibility, you always have to use the <code>caller</code>
+		property of the TLS in some way instead of just storing stuff on the TLS directly.</li>
+	
+</ul>
+</p>
+
 
   <h3><a name="notes" id="notes"></a>Last Notes</h3>Please be sure to read the chapter on <a href=
   "3-install.html">Configuration</a>, the <a href="5-nameserver.html">Name Server</a> and the chapter about <a href=

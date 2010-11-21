@@ -17,3 +17,8 @@ The MClient program uses a pattern match for subscribing.
 
 
 See also the countingcars example.
+
+
+Note: the Server_noNS and Client_noNS show the use of the event server
+without using the name server. You can start the Event server itself with the -N
+parameter. This way you don't need to have a name server running.

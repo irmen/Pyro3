@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 3-install.html,v 2.44.2.8 2008/07/07 16:19:46 irmen Exp $ -->
+<!-- $Id: 3-install.html,v 2.44.2.12 2009/03/26 21:27:26 irmen Exp $ -->
 <head>
   <title>PYRO - Installation</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -62,8 +62,9 @@
   <p><strong>Configuration</strong></p>
 
   <p>The default settings will do nicely in most cases. But sooner or later you will have to change some parameters of
-  Pyro. Pyro's configuration is accessed through <code>Pyro.config</code>. This object has several configuration
-  items:<br></p>
+  Pyro. Pyro's configuration is accessed through <code>Pyro.config</code>. This object has a lot of configuration
+  items, shown in the table below.<br></p>
+  <p>Use <code>python -m Pyro.configuration</code> to get a printout of Pyro's active configuration settings.</p>
 
   <table>
     <tr>
@@ -497,6 +498,18 @@
       queue has some space again. If false (0), the publisher won't block, but <em>the event is lost</em>
       (but only for the subscriber who has a full queue).</td>
 
+      <td>1</td>
+    </tr>
+    
+    <tr>
+      <td><code>PYRO_ONEWAY_THREADED</code></td>
+
+      <td>boolean</td>
+
+      <td>If true (1), oneway method calls will execute in a new server thread. 
+      	This allows for the server to continue to process other method calls on this object in the meantime.
+      	If false (0), oneway method calls will execute in the main server thread and need to complete before
+      	the server can process other calls on that object.</td>
       <td>1</td>
     </tr>
 

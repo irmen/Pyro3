@@ -24,6 +24,8 @@ class server(Pyro.core.ObjBase):
 
 ######## main program
 
+Pyro.config.PYRO_ONEWAY_THREADED = True			# try setting this to False and see what happens in the client
+
 Pyro.core.initServer()
 
 ns=Pyro.naming.NameServerLocator().getNS()

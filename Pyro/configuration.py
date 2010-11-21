@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: configuration.py,v 2.32.2.9 2008/07/07 16:19:46 irmen Exp $
+#	$Id: configuration.py,v 2.32.2.14 2009/04/01 09:46:14 irmen Exp $
 #	Sets up Pyro's configuration (Pyro.config).
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -67,6 +67,7 @@ _defaults= {
 	'PYRO_ES_QUEUESIZE':	1000,
 	'PYRO_ES_BLOCKQUEUE':	1,
 	'PYRO_DETAILED_TRACEBACK': 0,
+	'PYRO_ONEWAY_THREADED': 1,
 	'PYROSSL_CERTDIR':		'$STORAGE/certs',			# (abs)
 	'PYROSSL_CA_CERT':		'ca.pem',
 	'PYROSSL_SERVER_CERT':	'server.pem',
@@ -217,10 +218,20 @@ class ConfigReader:
 				return os.path.join(self.items['PYRO_STORAGE'], value[9:])
 		return value
 
-
+# easy config diagnostic with python -m
 if __name__=="__main__":
+	print "Pyro version:",Pyro.constants.VERSION
 	r=ConfigReader(_defaults)
-	r._check("Pyro.conf")
+	if os.path.exists("Pyro.conf"):
+		r._check("Pyro.conf")
 	x=Config()
-	x.setup("Pyro.conf")
+	if os.path.exists("Pyro.conf"):
+		x.setup("Pyro.conf")
+	else:
+		x.setup(None)
 	x.finalizeConfig_Server(1)
+	items=vars(x).items()
+	items.sort()
+	print "Active configuration settings:"
+	for item,value in items:
+		print item+"="+str(value)

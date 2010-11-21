@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 5-nameserver.html,v 2.33.2.6 2008/06/28 23:41:02 irmen Exp $ -->
+<!-- $Id: 5-nameserver.html,v 2.33.2.8 2009/03/26 21:27:26 irmen Exp $ -->
 <head>
   <title>PYRO - Name Server</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -47,15 +47,17 @@
   <dl>
     <dt><code>pyro-ns</code> &nbsp;&nbsp;(Name Server)</dt>
 
-    <dd>- Arguments: [-h] [-k] [-m] [-r] [-n hostname] [-p port] [-b port] [-i identification] [-d [databasefile]] [-s
+    <dd>- Arguments: [-h] [-k] [-m] [-r] [-x] [-n hostname] [-p port] [-b bcport] [-c bcaddr] [-i identification] [-d [databasefile]] [-s
     securitymodule] [-1 [host:port]] [-2 [host:port]] [-v]<br>
     - Starts the Pyro Name Server. The '-h' argument prints some help, '-k' makes it immune to shutdown requests (a
     crude form of security against malicious shutdown requests), '-m' allows multiple Name Servers to be started in the
     same network segment (default=not allowed), 
     '-r' means that no lookup will be done to check for an already existing nameserver,
+    '-x' means that no broadcast listener will be started,
     '-n hostname' selects the hostname the server should bind on (useful on
     systems with multiple network adapters/hostnames), '-p port' override the Name Server port number (0=random), '-b port'
-    specifies the broadcast port number. With '-i identification' you can supply the authentication passphrase that
+    specifies the broadcast port number. '-c ipaddress' specifies a broadcast listener ip address override.
+    With '-i identification' you can supply the authentication passphrase that
     will be required to connect to this server. When it contains spaces, use quotes around it. '-d' starts the
     persistent server. You can provide an optional filename to the last option to specify the database file. The '-s'
     option specifies the Python module for security plugins (make sure it is in your PYTHONPATH). Use '-v' to enable
@@ -89,7 +91,15 @@
     <code>PyroServiceArguments</code> (REG_SZ, it will be asked and created for you when doing a <code>nssvc.cmd
     install</code> from a command prompt).<br>
     <em>Running the NS as a windows NT service it not well supported.</em></dd>
-  </dl>Using the <code>pyro-nsc</code> command (explained in the Usage chapter) you can control a Name Server that is
+    <br>
+
+    <dt>You can also use <code>python -m</code> to start the tools:</dt>
+    <dd><code>python -m Pyro.naming</code> - start the name server</dd>
+    <dd><code>python -m Pyro.nsc</code> - start the nsc tool. Also works with xnsc and wxnsc.</dd>
+
+  </dl>
+  
+  Using the <code>pyro-nsc</code> command (explained in the Usage chapter) you can control a Name Server that is
   already running.
 
   <p>Consider setting PYRO_CHECKSUM to 1 before starting the NS. It will communicate more reliably and the overhead is

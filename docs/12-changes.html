@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 12-changes.html,v 2.119.2.10 2008/10/05 00:18:39 irmen Exp $ -->
+<!-- $Id: 12-changes.html,v 2.119.2.28 2009/05/12 21:11:59 irmen Exp $ -->
 <head>
   <title>PYRO - Change Log</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -171,7 +171,7 @@
     <li>wxnsc updated to recent WxPython API, deprecation warning is gone</li>
    </ul>
         
-  <h3><a name="latest" id="latest"></a>Pyro 3.8.1</h3>
+  <h3></a>Pyro 3.8.1</h3>
    <ul>
     <li>Pyro 3.8 is a bug-fix release that is almost completely backwards compatible with Pyro 3.7, apart from the exception change explained next.</li>
     <li>Pyro now uses an internal mutex to control concurrent access to proxy objects. You can now freely use proxy objects in different threads. The thread ownership check has been removed, and the _transferThread() method is now a stub.</li>
@@ -214,6 +214,28 @@
     <li>AllInOne examples now use automatic port allocation to avoid port rebinding issues on certain os'es such as MacOS</li>
     <li>3.8.1: fixed mobile code deadlock</li>
     <li>3.8.1: better handling of socket.timeout errors</li>
+   </ul>
+
+  <h3><a name="latest" id="latest"></a>Pyro 3.9</h3>
+   <ul>
+   	<li>Fixed mobile code failing when needed to process depending modules (hierarchy)</li>
+   	<li>Nice new logo on website, also in manual</li>
+   	<li>Renamed some parameters in core.py to avoid overwriting the builtin type name 'object'</li>
+   	<li>Added '-x' option to name server to avoid starting a broadcast listener</li>
+	<li>Much simpler setup.py script</li>
+	<li>Added PYRO_ONEWAY_THREADED config item to tell Pyro to use a thread or not for oneway calls (default=1, use threads)</li>
+	<li>NS and ES, and the nsc tools, can now all be started by using python -m</li>
+	<li>Easy config diagnostic using python -m Pyro.configuration</li>
+	<li>jython: added workarounds for jython 2.2 bugs regarding __import__</li>
+	<li>jython: re-enabled broadcast name server lookup for newer jython versions (2.5+)</li>
+	<li>jython: removed seemingly useless select call in protocol code that caused crash in jython's select module</li>
+	<li>More info about 127.0.0.1 connection problems added to troubleshooting chapter in the manual</li>
+	<li>Event server can now also run without name server</li>
+	<li>Fixed possible deadlock in NS proxy when it needed to rebind to the server</li>
+	<li>Added overview about threads,sessions,objects to usage chapter in manual</li>
+	<li>Clarified TLS section in the manual</li>
+	<li>Added session example to show use of TLS and user-session resource objects</li>
+	<li>3.9.1: fixed invalid uri crash when starting nameserver in persistent mode</li>
    </ul>
 
   <div class="nav">

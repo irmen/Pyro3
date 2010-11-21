@@ -28,6 +28,7 @@ inheritance       - inheritance of remote objects
 logging           - test the logging facility
 maxclients        - example to test limit on simultaneous connections
 multithread       - shows need of multithreading server
+mobilehierarchy   - shows that mobile code can process a hierarchy of needed modules	
 naming            - shows naming functions
 NS_sec_plugins    - shows the connection validator plugin feature of the NS
 noNS              - how to use Pyro without a Name Server (not recommended)
@@ -35,6 +36,7 @@ oneway            - shows how oneway calls work in the background
 proxysharing      - shows the sharing of proxies over different threads
 quickstart        - shows the use of the Pyro.ext.remote module which makes using Pyro extremely easy, and a 'pyrorun' script which makes it even easier (no more server code needed!)
 quickstart-noNS   - like "quickstart" but doesn't use the Name Server
+sessions          - show use of TLS and user-session resource objects.
 simple            - a simple generic test
 ssl               - shows how to use the Secure Socket Layer (SSL) features
 stockquotes       - shows the use of the Event Service for stock quotes

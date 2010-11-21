@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 7-features.html,v 2.55.2.6 2008/07/07 16:19:46 irmen Exp $ -->
+<!-- $Id: 7-features.html,v 2.55.2.11 2009/04/03 23:44:44 irmen Exp $ -->
 <head>
   <title>PYRO - Features and Guidelines</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -37,7 +37,7 @@
     <li><a href="#dnsip">DNS, IP addresses and firewalls</a></li>
 
     <li><a href="#callback">Callbacks and Oneway calls</a></li>
-
+    
     <li><a href="#exc">Dealing with exceptions</a></li>
 
     <li><a href="#daemon">Remotely accessing the Daemon</a></li>
@@ -141,6 +141,15 @@
     but <em>before</em> returning the result. Calling the method again will result in two executions on the server.
     This is all usual transaction semantics stuff, and Pyro effectively gives you at-most-once semantics (methods are
     called zero or one times in case of failure).</li>
+    
+    <li>If a daemon goes down, automatic rebinding only works if the daemon is started again
+    	on the same port number. This may be an issue if you start multiple daemons while relying on 
+    	Pyro's automatic port selection feature. Start the daemons with an explicit <code>port</code> parameter
+        to make sure they reuse the same port every time.
+        The reason this is needed is that the rebinding of the proxy will use the PYRO:// uri that is
+        stored in the proxy. That URI only contains the exact location of the object in a specific daemon.
+        No new naming lookup via the name server is done.</li>
+    </li>
   </ol>
   You're probably wondering &quot;Why isn't this transparent? Why no PYRO_AUTOREBIND config item?&quot; The
   answer is: because you <em>have</em> to have control about it when a network problem occurs. Furthermore,
@@ -298,33 +307,50 @@
       performance and response times.</p>
 
   <h3><a name="tls" id="tls"></a>Thread Local Storage in Pyro objects</h3>
-  Sometimes it is convenient to store some data
-  in a container that is local to the current thread. Other threads have no access to that data, and
-  you don't overwrite global data by accident when you use this kind of storage. Pyro has this; it's
-  called &quot;thread local storage&quot; (TLS) and can be accessed from within the remote methods of your
+  <p>
+  Sometimes it is required to keep track of some data that should only be used by a single thread.
+  An example could be an open database connection object, 
+  because the connection isn't thread safe, or it needs this because of transactions,
+  or some other reason.
+  If you don't want to re-establish the connection for every call you can store it
+on what is called the Thread Local Storage.</p>
+
+<p> TLS is a container that is local to the current thread. Other threads have no access to that data, and
+  you don't overwrite global data by accident when you use this kind of storage. Pyro's TLS
+  can be accessed from within the remote methods of your
   Pyro objects ( it exists only when your object is invoked by Pyro, so you cannot access it from your <code>__init__</code> method
-  for instance).
+for instance).</p>
 
   <p><strong>How do you gain access to the TLS?</strong> The <code>ObjBase</code> base class has a method
-  <code>getLocalStorage()</code> that returns an instance of a storage class to put your data in. (It
-  also works on platforms that don't have threads). The TLS object has one predefined attribute: <code>caller</code>.
-  This attribute contains the <code>Pyro.protocol.TCPConnection</code> object of the client that is performing
-  the current method call. It is advised to leave this alone, but you could do nasty things with this
+  <code>getLocalStorage()</code> that returns an instance of a storage class to put your data in.
+  So you write something like this, to store something on it:
+  <pre>
+  	 self.getLocalStorage().something=...
+  </pre>
+  The TLS object already has one predefined attribute: <code>caller</code>.
+  This attribute contains the <code>Pyro.protocol.TCPConnection</code> object of the client proxy that is performing
+  the current method call.
+  You could use it to identifiy the unique client that is making the method call,
+  but remember that it is just a single proxy that you are pinpointing. Your client application could
+  have many proxies, even many different ones that connect to the same server.
+  It is advised to leave the <code>caller</code> object alone, but you could do nasty things with this
   if you want to (such as dropping the connection by calling <code>close()</code> on it). You might also
   use the <code>caller</code> object to access any
   specific data associated with the connection, that you have stored there yourself (for instance, the
   authentication id placed as an attribute on it from within a custom connection validator). See the
-  &quot;user_passwd_auth&quot; example.</p>
+  &quot;user_passwd_auth&quot; example.</p> It puts it there to be able to uniquely identify the client,
+  rather than just the calling proxy.
 
   <p><strong>How do you initialize the TLS?</strong> Pyro allocates the TLS as soon as it's needed. You cannot
   initialize it when your objects are initialized because it doesn't exist yet at that time. Instead, you have to set a
   custom init function in the Daemon using the <code>setInitTLS(initfunc)</code> method of the Daemon.
   <code>initfunc</code> must be a callable object that takes a single argument: the TLS object to initialize.</p>
-
-  <p>When running in multithreaded mode the TLS is unique for each caller thread ofcourse, but also for each object:
-  every Pyro object has a different TLS. But it's best not to depend on that feature because it might change in the
-  future and it is already not true when you run in singlethreaded mode. In singlethreaded mode the TLS is an object
-  allocated in the Daemon, and it is shared across every Pyro object and every method invocation.</p>
+  For example, this function can make sure that several attributes are created on the TLS object that your
+  methods assume to be there. If you would not do this, you need a check in all your methods
+  for the existence of those attributes, creating them when not yet available, and so on.
+     
+  <p><em>Note:</em> When running Pyro in singlethreaded mode the TLS is shared across every Pyro object and every method invocation!
+  This is different than normal, when running in multithreaded mode!</p>
 
   <p>If you use <em>delegation</em> instead of inheriting from <code>ObjBase</code>, you cannot use TLS because you
   don't have a means of getting to it (the getter is in <code>ObjBase</code>). This isn't bad because objects that use
@@ -337,6 +363,8 @@
   <code>localStorage</code> attribute. To avoid any problems, it is probably best not to use it at all. Remember that
   you can use <code>self.getLocalStorage()</code> fine from a Pyro object that is inherited from
   <code>Pyro.core.ObjBase</code>, even in single threaded mode!</p>
+  	
+  <p><strong>Examples</strong>  Have a look at the 'user_passwd_auth' and 'sessions' examples to see possible usages of the TLS.</p>
 
   <h3><a name="dnsip" id="dnsip"></a>DNS, IP addresses and firewalls</h3>There are some issues to be aware of,
   depending on your network configuration.
@@ -425,15 +453,20 @@
 
   <p><strong>Oneway calls:</strong> These are remote method calls that do not expect any answer, so they return
   immediately after sending the remote call to the remote object. The call does <em>not</em> wait for the remote method
-  to finish. At a lower level, it doesn't even wait for a protocol reply, so performance is much better too. On the
-  server side (the object that executes the oneway call), the call is executed in its own thread so that other calls
+  to finish. At a lower level, it doesn't even wait for a protocol reply, so performance is much better too.
+  </p>
+  <p>Normally, on the server side (the object that executes the oneway call), the call is executed in its own thread so that other calls
   can be processed in the meantime, if the oneway method takes some time to complete. This only works if multithreading
   is enabled. This property of oneway calls allows you, for instance, to start a computation and continue your own
   business while the computation runs. Later on you use another remote call to retrieve the results of the computation
   (or use a callback). This way, you don't have to worry about programming a multithreaded client, just use a oneway
-  call.</p>
+  call.
+  You can disable this by setting the PYRO_ONEWAY_THREADED config item to false (0). Oneway calls will
+  then execute in the server's main thread. New method calls on the object will have to wait until the
+  oneway method call has finished processing, as usual.
+  </p>
 
-  <p><em>But!</em> There is <em>no way</em> to find out what the result of your request was - whether it succeeded or
+  <p><em>Note:</em> There is <em>no way</em> to find out what the result of your request was - whether it succeeded or
   failed. No result nor any exception is ever returned. You're still quite sure that the call is performed though,
   because the request is sent using the regular PYRO protocol, but there is no guarantee (nor is there with regular
   calls by the way).</p>

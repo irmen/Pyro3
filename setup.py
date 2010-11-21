@@ -1,87 +1,28 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 2.26.2.2 2007/05/19 13:31:30 irmen Exp $
+# $Id: setup.py,v 2.26.2.4 2009/03/18 21:54:24 irmen Exp $
 # Pyro setup script
 #
 
 from distutils.core import setup
-import sys,os
+import sys,os,glob
+import sets
 
-from ConfigParser import ConfigParser
-
-def gather_scripts():
-	names = ['pyro-es', 'pyro-genguid', 'pyro-ns', 'pyro-nsc', 'pyro-rns', 'pyro-xnsc', 'pyro-wxnsc' ]
-	if sys.platform == 'win32':
-		names.extend(['pyro-nssvc','pyro-essvc']) # scripts that are only for Windows
-		names = map( lambda x: x+'.cmd', names)
-	else:
-		names.extend(['pyro-esd', 'pyro-nsd']) # scripts that are not for Windows
-	names = map( lambda x: os.path.join( 'bin', x), names )
-	return names
 
 if __name__ == '__main__' :
-	if len(sys.argv)<=1:
-		sys.argv.append("-h")
-	if not sys.argv[1].startswith('install'):
-		scripts=gather_scripts()
-	else:	
-		print 'This script will install Pyro on your system.'
-		# first, confirm the installation path of the scripts.
-		scripts=[]
-		config='setup.cfg'
-		cp=ConfigParser()
-		cp.read(config)
-		if cp.has_option('install-options','unattended'):
-			unattended=cp.get('install-options','unattended')
-		else:	
-			unattended=0
-		if unattended:
-			scr='y'
-			loc=cp.get('install','install-scripts')
-			print 'Unattended install. Scripts will go to',loc
-		else:
-			scr=raw_input('Do you want the Pyro scripts (in bin/) installed (y/n)? ')
-
-		if scr.lower()=='y':
-			#loc=cp.get('install','install-scripts')
-			if unattended:
-				scr=None
-			else:	
-				print 'Some Pyro scripts may conflict with system tools already on your system.'
-				print 'Choose your script install directory carefully.'
-				print 'The default location is usually something like C:\\Python\\Scripts'
-				print 'on Windows and /usr/local/bin on Unixes.'
-				#scr=raw_input('Where do you want them to be installed ('+loc+')? ')
-				scr=raw_input('Where do you want them to be installed (empty=default loc.)? ')
-
-			if scr:
-				loc=scr
-				if not cp.has_section('install'):
-					cp.add_section('install')
-				cp.set('install','install-scripts',loc)
-				cp.write(open(config,'w'))
-				print 'Your scripts are going to be installed into ',loc
-			elif not unattended:
-				cp.remove_section('install')
-				cp.write(open(config,'w'))
-				print 'Your scripts are going to be installed into the default location.'
-				loc = 'the default location.'
-
-			scripts=gather_scripts()
-			print "SCRIPTS=",scripts
-
-			print
-		else:
-			print 'For maximum comfort, don\'t forget to install the script tools in bin/ yourself ;-)'
-			print
-
+	scripts=sets.Set(glob.glob("bin/pyro-*.cmd"))
+	if sys.platform != 'win32':
+		scripts=sets.Set(glob.glob("bin/pyro-*")) - scripts
+	
 	# extract version string from Pyro/constants.py
-	ver=open(os.path.join('Pyro','constants.py'),'r').read()
-	ver=ver[ver.find('VERSION'):].split('\'')[1]
-	print 'Pyro Version = ',ver
+	code=compile(open(os.path.join('Pyro','constants.py')).read(), "constants", "exec")
+	constants={}
+	exec code in constants
+	version=constants["VERSION"]
+	print 'Pyro Version = ',version
 
 	setup(name="Pyro",
-		version= ver,
+		version= version,
 		license="MIT",
 		description = "Powerful but easy-to-use distributed object middleware for Python",
 		author = "Irmen de Jong",
@@ -89,21 +30,6 @@ if __name__ == '__main__' :
 		url = "http://pyro.sourceforge.net/",
 		long_description = """Pyro is an acronym for PYthon Remote Objects. It is an advanced and powerful Distributed Object Technology system written entirely in Python, that is designed to be very easy to use. It resembles Java's Remote Method Invocation (RMI). It has less similarity to CORBA - which is a system- and language independent Distributed Object Technology and has much more to offer than Pyro or RMI. But Pyro is small, simple and free!""",
 		packages=['Pyro','Pyro.EventService','Pyro.ext'],
-		scripts = scripts,
+		scripts = list(scripts),
 		platforms='any'
 	)
-    
-	if sys.argv[1].startswith('install'):
-		if not unattended:
-			if scripts:	
-				print
-				print 'Your scripts have been installed into ',loc
-				print 'Please add this directory to your PATH (if it\'s not there already)'
-			else:	
-				print
-				print 'For maximum comfort, don\'t forget to install the script tools in bin/ yourself ;-)'
-			print 'And, place the manual (in docs/) somewhere for easy reference!'
-			print
-		else:
-			print 'Install finished.'
-

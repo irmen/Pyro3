@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: util.py,v 2.52.2.5 2008/05/17 09:56:01 irmen Exp $
+#	$Id: util.py,v 2.52.2.7 2009/03/26 23:06:05 irmen Exp $
 #	Pyro Utilities
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -304,10 +304,23 @@ _getGUID_counter=0		# extra safeguard against double numbers
 _getGUID_lock=getLockObject()
 
 if os.name=='java':
+	# define jython specific stuff
+	# first, the guid stuff
 	import java.rmi.dgc
 	def getGUID():
 		# Jython uses java's own ID routine used by RMI
 		return java.rmi.dgc.VMID().toString().replace(':','-').replace('--','-')
+	import imp
+	if not hasattr(imp,"acquire_lock"):
+		# simulate missing imp.acquire_lock() from jython 2.2 (fixed in jython 2.5)
+		imp_lock=getLockObject()
+		def imp_acquire_lock():
+			return imp_lock.acquire()
+		def imp_release_lock():
+			return imp_lock.release()
+		imp.acquire_lock=imp_acquire_lock
+		imp.release_lock=imp_release_lock
+		
 elif sys.platform=='cli':
 	import System
 	def getGUID():

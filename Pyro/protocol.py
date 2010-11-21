@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: protocol.py,v 2.94.2.24 2008/10/05 00:02:18 irmen Exp $
+#	$Id: protocol.py,v 2.94.2.32 2009/03/28 15:53:17 irmen Exp $
 #	Pyro Protocol Adapters
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -18,8 +18,8 @@ except ImportError:
 	md5=md5.md5
 import Pyro.constants, Pyro.util
 
-from errors import *
-from errors import _InternalNoModuleError
+from Pyro.errors import *
+from Pyro.errors import _InternalNoModuleError
 pickle = Pyro.util.getPickle()
 Log = Pyro.util.Log
 	
@@ -350,6 +350,7 @@ class PYROAdapter:
 
 	# Retrieve code from the remote peer. Works recursively.
 	def _retrieveCode(self, mname, level):
+		Log.msg("PYROAdapter","client cannot find module: "+mname)
 		# XXX this is nasty code, and also duplicated in core.py remote_supply_code()
 		if mname in sys.modules:
 			# module is already loaded, do nothing
@@ -377,7 +378,8 @@ class PYROAdapter:
 					setattr(mod, m, new.module(real_path))
 					mod = getattr(mod, m)
 					sys.modules[real_path] = mod
-					
+
+			Log.msg('PYROAdapter','loading supplied code: ',mname)
 			if module[0:4] != imp.get_magic():
 				code = compile(module, "<downloaded>", "exec")
 			else:
@@ -421,7 +423,15 @@ class PYROAdapter:
 		ver,answer,pflags = self.receiveMsg(self.conn,1)
 		if answer is None:
 			raise ProtocolError('incorrect answer received')
-		return pickle.loads(answer)
+		answer=pickle.loads(answer)
+		if isinstance(answer,PyroExceptionCapsule):
+			if isinstance(answer.excObj,_InternalNoModuleError):
+				# server couldn't load module, supply it
+				return self.processMissingModuleError(answer.excObj, method, flags, args)
+			else:
+				# we have an encapsulated exception, raise it again.
+				answer.raiseEx()
+		return answer
 
 	def remoteInvocation(self, method, flags, *args):
 		try:
@@ -483,52 +493,58 @@ class PYROAdapter:
 
 		if isinstance(answer,PyroExceptionCapsule):
 			if isinstance(answer.excObj,_InternalNoModuleError):
-				# server couldn't load module, supply it
-				# XXX this code is ugly. and duplicated in remote_retrieve_code in core.py
-				try:
-					importmodule=new.module('-agent-import-')
-					mname=answer.excObj.modulename
-					# not used: fromlist=answer.excObj.fromlist
-					try:
-						exec 'import '+mname in importmodule.__dict__
-					except ImportError:
-						Log.error('PYROAdapter','Server wanted a non-existing module:',mname)
-						raise PyroError('Server wanted a non-existing module',mname)
-					m=eval('importmodule.'+mname)
-					bytecode=None
-					if hasattr(m,"_PYRO_bytecode"):
-						# use the bytecode that was put there earlier,
-						# this avoids recompiles of the source .py if we don't have .pyc bytecode available
-						bytecode=m._PYRO_bytecode
-					else:
-						# try to load the module's compiled source, or the real .py source if that fails.
-						# note that the source code (.py) is opened with universal newline mode
-						if not hasattr(m,"__file__"):
-							raise PyroError("cannot read module source code",mname)
-						(filebase,ext)=os.path.splitext(m.__file__)
-						if ext.startswith(".PY"):
-							exts = ( (".PYO","rb"), (".PYC","rb"), (".PY","rU") )	# uppercase
-						else:
-							exts = ( (".pyo","rb"), (".pyc","rb"), (".py","rU") )	# lowercase
-						for ext,mode in exts:
-							try:
-								bytecode=open(filebase+ext, mode).read()
-								break
-							except EnvironmentError:
-								pass
-					if bytecode:
-						self._remoteInvocationMobileCode("remote_supply_code",0,mname, bytecode, self.conn.sock.getsockname())
-						# retry the method invocation
-						return self._remoteInvocation(* (method, flags)+args)   # use the non-locking call
-					Log.error("PYROAdapter","cannot read module source code for module:", mname)
-					raise PyroError("cannot read module source code",mname)
-				finally:
-					del importmodule
+				# server couldn't load the module, send it
+				return self.processMissingModuleError(answer.excObj, method, flags, args)
 			else:
 				# we have an encapsulated exception, raise it again.
 				answer.raiseEx()
 		return answer
 
+	def processMissingModuleError(self, errorinfo, method, flags, args):
+		# server couldn't load module, supply it
+		# XXX this code is ugly. and duplicated in remote_retrieve_code in core.py
+		Log.msg('PYROAdapter',"server can't load module: "+errorinfo.modulename)
+		try:
+			importmodule=new.module('-agent-import-')
+			mname=errorinfo.modulename
+			# not used: fromlist=errorinfo.fromlist
+			try:
+				exec 'import '+mname in importmodule.__dict__
+			except ImportError:
+				Log.error('PYROAdapter','Server wanted a non-existing module:',mname)
+				raise PyroError('Server wanted a non-existing module',mname)
+			m=eval('importmodule.'+mname)
+			bytecode=None
+			if hasattr(m,"_PYRO_bytecode"):
+				# use the bytecode that was put there earlier,
+				# this avoids recompiles of the source .py if we don't have .pyc bytecode available
+				bytecode=m._PYRO_bytecode
+			else:
+				# try to load the module's compiled source, or the real .py source if that fails.
+				# note that the source code (.py) is opened with universal newline mode
+				if not hasattr(m,"__file__"):
+					raise PyroError("cannot read module source code",mname)
+				(filebase,ext)=os.path.splitext(m.__file__)
+				if ext.startswith(".PY"):
+					exts = ( (".PYO","rb"), (".PYC","rb"), (".PY","rU") )	# uppercase
+				else:
+					exts = ( (".pyo","rb"), (".pyc","rb"), (".py","rU") )	# lowercase
+				for ext,mode in exts:
+					try:
+						bytecode=open(filebase+ext, mode).read()
+						break
+					except EnvironmentError:
+						pass
+			if bytecode:
+				Log.msg('PYROAdapter',"sending module to server: "+mname)
+				self._remoteInvocationMobileCode("remote_supply_code",0,mname, bytecode, self.conn.sock.getsockname())
+				# retry the method invocation
+				return self._remoteInvocation(* (method, flags)+args)   # use the non-locking call
+			Log.error("PYROAdapter","cannot read module source code for module:", mname)
+			raise PyroError("cannot read module source code",mname)
+		finally:
+			del importmodule
+		
 	# (private) receives a socket message, returns: (protocolver, message, protocolflags)
 	def receiveMsg(self,conn,noReply=0):
 		msg=sock_recvmsg(conn.sock, self.headerSize, self.timeout)
@@ -636,7 +652,7 @@ class PYROAdapter:
 			return
 		else:
 			# Do the invocation. We are already running in our own thread.
-			if req[2]&Pyro.constants.RIF_Oneway and daemon.threaded:   # flags
+			if req[2]&Pyro.constants.RIF_Oneway and Pyro.config.PYRO_ONEWAY_THREADED and daemon.threaded:
 				# received a oneway call, run this in its own thread.
 				thread=Thread(target=self._handleInvocation2, args=(daemon,req,pflags,conn,o))
 				thread.setDaemon(1)   # thread must exit at program termination.
@@ -749,12 +765,15 @@ class PYROAdapter:
 class agent_import:
 	def __init__(self, orig_import):
 		self.orig_import=orig_import
-	def __call__(self,name, globals={},locals={},fromlist=None, *rest):
+	def __call__(self,name,iglobals={},ilocals={},fromlist=None, *rest):
+		if os.name=="java":
+			# workaround for odd Jython bug, iglobals and ilocals may not exist in this scope...(?!)
+			iglobals=vars().get("iglobals",{})
+			ilocals=vars().get("ilocals",{})
 		# save the import details:
 		self.name=name		# note: this must be a str object
 		self.fromlist=fromlist
-		return self.orig_import(name,globals,locals,fromlist, *rest)
-
+		return self.orig_import(name,iglobals,ilocals,fromlist, *rest)
 
 #
 # The SSL adapter that handles SSL connections instead of regular sockets.
@@ -925,6 +944,8 @@ class TCPServer:
 		self._ssl_server = 0
 		self.connections = []  # connection threads
 		self.initTLS=lambda tls: None  # default do-nothing func
+		if host:
+			socket.gethostbyname(host)  # validate hostname
 		try:
 			if prtcol=='PYROSSL':
 				try:
@@ -1006,9 +1027,7 @@ class TCPServer:
 						if not conn.connected:
 							# connection has been closed in the meantime!
 							raise ConnectionClosedError()
-						ins,outs,exs=safe_select([conn],[],[],2)
-						if conn in ins or conn in exs:
-							self.handleInvocation(conn)
+						self.handleInvocation(conn)
 					except ConnectionClosedError:
 						# client went away. Exit immediately
 						self.removeConnection(conn)

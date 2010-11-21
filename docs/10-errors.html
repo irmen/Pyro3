@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 10-errors.html,v 2.30.2.3 2008/07/07 16:19:46 irmen Exp $ -->
+<!-- $Id: 10-errors.html,v 2.30.2.5 2009/03/28 11:52:19 irmen Exp $ -->
 <head>
   <title>PYRO - Errors and Troubleshooting</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -25,6 +25,12 @@
 
   <p>The <a href="#shoot">Troubleshooting</a> section provides various hints and tips when you can't get things to work
   as expected.</p>
+
+  <p>The <a href="#specificissues">Specific issues</a> section at the end contains more detailed discussion of specific issues you may encounter:
+  	<ul>
+  		<li>127.0.0.1 connection problems</li>
+  	</ul>
+  	</p>
 
   <h3><a name="errors" id="errors"></a>Pyro Errors</h3>
 
@@ -309,6 +315,9 @@ front page</a>).</p>
 	<a href="http://www.razorvine.net/python/PyroAndJython">Jython</a> ;
 	<a href="http://www.razorvine.net/python/PyroAndIronPython">IronPython</a> .
 	</p>
+
+  <p>Use <code>python -m Pyro.configuration</code> to get a printout of Pyro's active configuration settings.</p>
+	
   <br>
 
   <table>
@@ -375,10 +384,7 @@ front page</a>).</p>
 
       <td>NS or daemon binds on loopback address due to faulty network config.</td>
 
-      <td>Often it's wrong if your hostname resolves to 127.0.0.1 (the loopback address) - your servers are invisible
-      from other hosts if they bind on this address. This usually isn't Pyro's fault, but an error in your
-      network/DNS/resolv configuration or your hosts file. (Pyro warns you about this, but continues, because sometimes
-      it <em>is</em> correct.)</td>
+      <td>Look at the <a href="#specificissues">specific issues</a> at the bottom for a discussion about this problem.</td>
     </tr>
 
     <tr>
@@ -545,6 +551,53 @@ front page</a>).</p>
       <td>Contact <a href="mailto:irmen@users.sourceforge.net">me</a>.</td>
     </tr>
   </table>
+  
+  <h3><a name="specificissues" id="specificissues">Specific issues</a></h3>
+  <h4>127.0.0.1 connection problems</h4>
+  <p>
+  	Sometimes you may encounter a problem with connecting to your Pyro server over the network,
+  	and Pyro complains that it cannot connect to your server. If you see some complaints about
+  	'127.0.0.1', 'localhost' or 'loopback adapter' in the error or in the log, continue reading.<p>
+  <p>
+  	<strong>What is happening?</strong>
+  	Pyro has connected the server to 127.0.0.1 which is the local loopback network. This means that
+  	the server is not accessible from anything but the local host. Pyro code on a different host can
+  	never make a connection to this server because even if it obtains an URI from the server,
+  	the address in it will be 127.0.0.1 and that means: 'hey, I am on your local host'.
+It then tries to connect to the server on the local host, but that won't work for obvious reasons.</p>
+<p><strong>Why is this happening?</strong>
+You may have told Pyro to use the loopback address yourself, by setting the hostname to bind on to 'localhost' or '127.0.0.1'.
+That is fine as long as you're only running stuff on this single host, but if external machines try to connect to it
+it will fail.
+The other explanation is that the hostname Pyro uses to bind the server on, resolves (via DNS) to the IP address
+of the loopback adapter (127.0.0.1). 
+Quite a few Linux distributions are set up like this unfortunately, where the hostname of your computer resolves to 127.0.0.1.
+(you can usually check this by typing <code>ping yourhostname</code> at a shell prompt).
+When Pyro tries to bind the server to a network adapter, it is then likely it ends up with 127.0.0.1.
+<p>
+	<p><strong>What can I do about it?</strong>
+There are several options to fix this problem:
+<ul>
+	<li>Tell Pyro to bind on the correct network adapter / ip address.
+		You can use an explicit 'host' parameter when creating the Daemon, 
+		if for instance you want to define it in your own config file. Like this:
+		<code>daemon=Pyro.core.Daemon(host="my.external.ip.address")</code>
+	</li>
+	<li>There are several config items that may be of use here (See the <a href="3-install.html">Installation and Configuration</a> chapter):
+		<ul>
+			<li><code>PYRO_HOST</code></li>
+			<li><code>PYRO_DNS_URI</code></li>
+			<li><code>PYRO_PUBLISHHOST</code></li>
+			<li><code>PYRO_NS_HOSTNAME</code></li>
+		</ul>
+	</li>
+	<li>Edit the <code>/etc/hosts</code> file on your system and fix the IP address that's associated with your hostname</li>
+	<li>Fix your DNS server to return the correct IP address for your host if it returns 127.0.0.1</li>
+	<li>Use the appropriate command line options for the Name Server or Event Server script tools to bind it to a different hostname.</li>
+</ul>      
+  </p>
+  
+  
   <div class="nav">
   <hr>
   <table width="100%">

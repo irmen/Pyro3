@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-$Id: wxnsc.py,v 1.10.2.4 2008/06/01 09:45:35 irmen Exp $
+$Id: wxnsc.py,v 1.10.2.6 2009/03/27 14:30:29 irmen Exp $
 
 A wxPython gui to nsc (Pyro Name Server Control tool).
 This gui doesn't have as many features as the xnsc that ships with Pyro,
@@ -23,8 +23,8 @@ Usage (from the commandline):
 """
 
 __author__   = "Jan Finell"
-__date__     = "$Date: 2008/06/01 09:45:35 $"
-__revision__ = "$Revision: 1.10.2.4 $"
+__date__     = "$Date: 2009/03/27 14:30:29 $"
+__revision__ = "$Revision: 1.10.2.6 $"
 
 #
 # Standard modules
@@ -196,6 +196,8 @@ class wx_NSC(wx.Frame):
       self._bindEvents()
       # binding stdout to my own txtCtrl Log.
       sys.stdout = self.txtCtrlLog
+      
+      self._log("Pyro version: "+Pyro.constants.VERSION)
       
       self.nsc_findNS()
       if self.NS: self.update()
@@ -908,7 +910,6 @@ def main(argv):
    app = wx_NSCApp(0)
    app.MainLoop()
 
-if __name__ == '__main__':
+# allow easy usage with python -m
+if __name__=="__main__":
    main(sys.argv)
-
-

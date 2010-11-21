@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: core.py,v 2.104.2.19 2008/08/19 14:30:38 irmen Exp $
+#	$Id: core.py,v 2.104.2.25 2009/03/29 20:19:27 irmen Exp $
 #	Pyro Core Library
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -257,29 +257,15 @@ class PyroURI:
 	def __init__(self,host,objectID=0,port=0,prtcol='PYRO'):
 		# if the 'host' arg is a PyroURI, copy contents
 		if isinstance(host, PyroURI):
-			self.reinitFromString(str(host))
+			self.init(host.address, host.objectID, host.port, host.protocol)
 		else:
 			# If the 'host' arg contains '://', assume it's an URI string.
 			if host.find('://')>0:
 				self.reinitFromString(host)
 			else:
-				if '/' in host:
-					raise URIError('malformed hostname')
-				if Pyro.config.PYRO_DNS_URI:
-					self.address = host
-				else:
-					self.address=Pyro.protocol.getIPAddress(host)
-					if not self.address:
-						raise URIError('unknown host')
-				if port:
-					if type(port)==type(1):
-						self.port=port
-					else:
-						raise TypeError("port must be integer")
-				else:
-					self.port=Pyro.config.PYRO_PORT
-				self.protocol=prtcol
-				self.objectID=objectID
+				if not objectID:
+					raise URIError('invalid URI format')
+				self.init(host, objectID, port, prtcol)
 	def __str__(self):
 		return self.protocol+'://'+self.address+':'+str(self.port)+'/'+self.objectID
 	def __repr__(self):
@@ -291,14 +277,24 @@ class PyroURI:
 		return cmp(str(self), str(o))
 	def clone(self):
 		return PyroURI(self)
-	def init(self,address,objectID,port=0,prtcol='PYRO'):
-		self.address=address
-		self.objectID=objectID
+	def init(self,host,objectID,port=0,prtcol='PYRO'):
+		if '/' in host:
+			raise URIError('malformed hostname')
+		if Pyro.config.PYRO_DNS_URI:
+			self.address = host
+		else:
+			self.address=Pyro.protocol.getIPAddress(host)
+			if not self.address:
+				raise URIError('unknown host')
 		if port:
-			self.port=port
+			if type(port)==type(1):
+				self.port=port
+			else:
+				raise TypeError("port must be integer")
 		else:
 			self.port=Pyro.config.PYRO_PORT
 		self.protocol=prtcol
+		self.objectID=objectID
 	def reinitFromString(self,arg):
 		if arg.startswith('PYROLOC') or arg.startswith('PYRONAME'):
 			uri=processStringURI(arg)
@@ -306,17 +302,13 @@ class PyroURI:
 			return
 		x=re.match(r'(?P<protocol>[^\s:/]+)://(?P<hostname>[^\s:]+):?(?P<port>\d+)?/(?P<id>\S*)',arg)
 		if x:
-			self.protocol=x.group('protocol')
-			self.address=x.group('hostname')
-			self.port=x.group('port')
-			if self.port:
-				self.port=int(self.port)
-			else:
-				self.port=Pyro.config.PYRO_PORT
-			self.objectID=x.group('id')
+			port=None
+			if x.group('port'):
+				port=int(x.group('port'))
+			self.init(x.group('hostname'), x.group('id'), port, x.group('protocol'))
 			return
-		Log.error('PyroURI','illegal URI format passed: '+arg)
-		raise URIError('illegal URI format')
+		Log.error('PyroURI','invalid URI format passed: '+arg)
+		raise URIError('invalid URI format')
 	def getProxy(self):
 		return DynamicProxy(self)
 	def getAttrProxy(self):
@@ -422,6 +414,10 @@ class DynamicProxy:
 	def _release(self):
 		if self.adapter:
 			self.adapter.release()
+	def _local(self):
+		return self.URI._local()
+	def _islocal(self):
+		return self.URI._islocal()
 	def __copy__(self):			# create copy of current proxy object
 		proxyCopy = DynamicProxy(self.URI)
 		proxyCopy.adapter.setIdentification(self.adapter.getIdentification(), munge=False)   # copy identification info
@@ -458,6 +454,7 @@ class DynamicProxy:
 
 	def _invokePYRO(self, name, vargs, kargs):
 		if not self.adapter.connected():
+			# rebind here, don't do it from inside the remoteInvocation because deadlock will occur
 			self.adapter.bindToURI(self.URI)
 		return self.adapter.remoteInvocation(name, Pyro.constants.RIF_VarargsAndKeywords, vargs, kargs)
 
@@ -670,22 +667,22 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 		return DynamicProxyWithAttrs( PyroURI(self.hostname,
 				obj.GUID(), prtcol=self.protocol, port=self.port) )
 
-	def connectPersistent(self, object, name=None):
+	def connectPersistent(self, obj, name=None):
 		# when a persistent entry is found in the NS, that URI is
 		# used instead of the supplied one, if the address matches.
 		if name and self.NameServer:
 			self.nscallMutex.acquire()
 			try:
 				try:
-					newURI = PyroURI(self.hostname, object.GUID(), prtcol=self.protocol, port=self.port)
+					newURI = PyroURI(self.hostname, obj.GUID(), prtcol=self.protocol, port=self.port)
 					URI=self.NameServer.resolve(name)
 					if (URI.protocol,URI.address,URI.port)==(newURI.protocol,newURI.address,newURI.port):
 						# reuse the previous object ID
-						object.setGUID(URI.objectID)
+						obj.setGUID(URI.objectID)
 						# enter the (object,name) in the known impl. dictionary
-						self.implementations[object.GUID()]=(object,name)
-						self.persistentConnectedObjs.append(object.GUID())
-						object.setPyroDaemon(self)
+						self.implementations[obj.GUID()]=(obj,name)
+						self.persistentConnectedObjs.append(obj.GUID())
+						obj.setPyroDaemon(self)
 						return URI
 					else:
 						# name exists, but address etc. is wrong. Remove it.
@@ -697,11 +694,11 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 			finally:
 				self.nscallMutex.release()
 		# Register normally.		
-		self.persistentConnectedObjs.append(object.GUID())
-		return self.connect(object, name)
+		self.persistentConnectedObjs.append(obj.GUID())
+		return self.connect(obj, name)
 
-	def connect(self, object, name=None):
-		URI = PyroURI(self.hostname, object.GUID(), prtcol=self.protocol, port=self.port)
+	def connect(self, obj, name=None):
+		URI = PyroURI(self.hostname, obj.GUID(), prtcol=self.protocol, port=self.port)
 		# if not transient, register the object with the NS
 		if name:
 			self.nscallMutex.acquire()
@@ -713,26 +710,26 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 			finally:
 				self.nscallMutex.release()
 		# enter the (object,name) in the known implementations dictionary
-		self.implementations[object.GUID()]=(object,name)
-		object.setPyroDaemon(self)
+		self.implementations[obj.GUID()]=(obj,name)
+		obj.setPyroDaemon(self)
 		return URI
 
-	def disconnect(self,object):
+	def disconnect(self,obj):
 		try:
-			if self.NameServer and self.implementations[object.GUID()][1]:
+			if self.NameServer and self.implementations[obj.GUID()][1]:
 				self.nscallMutex.acquire()
 				try:
 					# only unregister with NS if it had a name (was not transient)
-					self.NameServer.unregister(self.implementations[object.GUID()][1])
+					self.NameServer.unregister(self.implementations[obj.GUID()][1])
 				finally:
 					self.nscallMutex.release()
-			del self.implementations[object.GUID()]
-			if object.GUID() in self.persistentConnectedObjs:
-				self.persistentConnectedObjs.remove(object.GUID())
+			del self.implementations[obj.GUID()]
+			if obj.GUID() in self.persistentConnectedObjs:
+				self.persistentConnectedObjs.remove(obj.GUID())
 			# XXX Clean up connections/threads to this object?
 			#     Can't be done because thread/socket is not associated with single object 
 		finally:
-			object.setPyroDaemon(None)
+			obj.setPyroDaemon(None)
 
 	def getRegistered(self):
 		r={}
@@ -878,3 +875,6 @@ def initServer(banner=0, storageCheck=1):
 		print 'Pyro Server Initialized. Using Pyro V'+Pyro.constants.VERSION
 	_init_server_done=1
 
+
+if __name__=="__main__":
+	print "Pyro version:",Pyro.constants.VERSION

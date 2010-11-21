@@ -14,7 +14,14 @@ For more information see the Features chapter in the manual
 (callbacks & oneway calls).
 
 
-(Due to a bug in Pyro 3.4 and older, the oneway call is not
-processed in the background on the server, and subsequent
-method calls must wait. So use 3.5 or newer to see it work
-as it was intended)
+PYRO_ONEWAY_THREADED config item:
+
+This server sets PYRO_ONEWAY_THREADED to True, so Pyro will run incoming
+oneway method calls in their own thread. This allows for the server to
+continue to process other method calls on this object in the meantime!
+That is why the client can "poll" for server completion.
+(this is the default setting, by the way).
+
+Try setting PYRO_ONEWAY_THREADED to False in the server and see what happens.
+The client tries to poll the server for completion, but the method call blocks
+until the call to the 'oneway' method finished processing.

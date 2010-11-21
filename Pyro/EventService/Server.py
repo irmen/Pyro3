@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: Server.py,v 2.37.2.5 2008/08/19 14:30:38 irmen Exp $
+#	$Id: Server.py,v 2.37.2.7 2009/03/28 23:12:54 irmen Exp $
 #	Event Service daemon and server classes
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -281,17 +281,19 @@ class EventServiceStarter:
 
 def start(argv):
 	Args = Pyro.util.ArgParser()
-	Args.parse(argv,'hn:p:i:')
+	Args.parse(argv,'hNn:p:i:')
 	if Args.hasOpt('h'):
-		print 'Usage: es [-h] [-n hostname] [-p port] [-i identification]'
+		print 'Usage: pyro-es [-h] [-n hostname] [-p port] [-N] [-i identification]'
 		print '  where -p = ES server port (0 for auto)'
 		print '        -n = non-default hostname to bind on'
+		print '        -N = do not use the name server'
 		print '        -i = the required authentication ID for ES clients,'
 		print '             also used to connect to other Pyro services'
 		print '        -h = print this help'
 		raise SystemExit
 	hostname = Args.getOpt('n',None)
 	port = Args.getOpt('p',None)
+	useNameServer = not Args.hasOpt('N')
 	ident = Args.getOpt('i',None)
 	if port:
 		port=int(port)
@@ -302,4 +304,9 @@ def start(argv):
 
 	print '*** Pyro Event Server ***'
 	starter=EventServiceStarter(identification=ident)
-	starter.start(hostname,port,norange=norange)
+	starter.start(hostname,port,useNameServer=useNameServer,norange=norange)
+
+
+# allow easy starting of the ES by using python -m
+if __name__=="__main__":
+	start(sys.argv[1:])

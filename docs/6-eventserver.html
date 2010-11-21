@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-  <!-- $Id: 6-eventserver.html,v 2.17.2.4 2008/07/07 16:19:46 irmen Exp $ -->
+  <!-- $Id: 6-eventserver.html,v 2.17.2.6 2009/03/28 23:12:54 irmen Exp $ -->
   <title>PYRO - Event Server</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -98,7 +98,7 @@
   <h3><a name="starting" id="starting"></a>Starting the Event Server</h3>Start the ES using the <code>pyro-es</code> command
   from the <code>bin</code> directory (use <code>pyro-es.cmd</code> on windows). You can specify the following
   arguments:<br><br>
-  pyro-es [-h] [-n hostname] [-p port] [-i identification]
+  pyro-es [-h] [-n hostname] [-p port] [-N] [-i identification]
 
   <dl>
     <dt>-h</dt>
@@ -112,6 +112,8 @@
     <dt>-p port</dt>
 
     <dd>Change the port number the server uses. (Omit to use Pyro defaults, 0 to let the operating system choose a random port).</dd>
+    <dt>-N</dt>
+    <dd>Do not use the Name server</dd>
 
     <dt>-i identification</dt>
 
@@ -133,6 +135,9 @@
     <code>PyroServiceArguments</code> (REG_SZ, it will be asked and created for you when doing a <code>essvc.cmd
     install</code> from a command prompt).<br>
     <em>Running the ES as a windows NT service it not well supported.</em></dd>
+	<br>
+    <dt>You can also use <code>python -m</code> to start it:</dt>
+    <dd><code>python -m Pyro.EventService.Server</code></dd>
   </dl>
 
   <p><strong>Like the Name Server, if you want to start the Event Server from within your own program</strong>,
@@ -203,6 +208,12 @@ sp.publishQuote(&quot;SUN&quot;, 22.44)
   <h4>Authentication passphrase</h4>The <code>__init__</code> of both the Publisher and the Subscriber takes an
   optional <code>ident</code> argument. Use this to specify the authentication passphrase that will be used to connect
   to the ES (and also to connect to the Name Server).
+  
+  <h4>Not using the name server</h4>
+  The <code>__init__</code> of both the Publisher and the Subscriber takes an
+  optional <code>esURI</code> argument. Set it to the URI of the Event Server (string format) 
+  if you don't have a name server running.  Look at the 'stockquotes' example to see how this can be done.
+  Note that the Event service usually prints its URI when started.
 
   <h3><a name="subscribe" id="subscribe"></a>Using the Event Server (subscribe)</h3>
   As pointed out above, the ES is

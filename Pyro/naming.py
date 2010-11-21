@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: naming.py,v 2.64.2.19 2008/08/05 22:25:45 irmen Exp $
+#	$Id: naming.py,v 2.64.2.24 2009/04/28 18:18:27 irmen Exp $
 #	Pyro Name Server
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -111,8 +111,9 @@ class NameServerLocator:
 					raise ValueError("invalid command specified")
 
 			# No host specified. Use broadcast mechanism
-			if os.name=='java':
-				msg="Skipping UDP broadcast (jython doesn't support this operation)"
+			if os.name=='java' and sys.version_info<(2,5):
+				# jythons older than 2.5 don't have working broadcast
+				msg="Skipping UDP broadcast (older jythons don't support this operation)"
 				if trace:
 					print msg
 				raise Pyro.errors.PyroError(msg)
@@ -206,6 +207,9 @@ class NameServerProxy:
 			
 	def __remoteinvoc(self, *args):
 		try:
+			if not self.adapter.connected():
+				# rebind here, don't do it from inside the remoteInvocation because deadlock will occur
+				self.adapter.bindToURI(self.URI)
 			return self.adapter.remoteInvocation(*args)
 		except Pyro.errors.ProtocolError,x:
 			# The remote invocation failed. Try to find the NS again.
@@ -603,9 +607,7 @@ class NameServer(Pyro.core.ObjBase):
 		if isinstance(URI, Pyro.core.PyroURI):
 			return URI
 		try:
-			u = Pyro.core.PyroURI('')
-			u.reinitFromString(URI)
-			return u
+			return Pyro.core.PyroURI(URI)
 		except:
 			raise Pyro.errors.NamingError('invalid URI',URI)
 
@@ -843,9 +845,7 @@ class PersistentNameServer(NameServer):
 		name=self.validateName(name)
 		fn = self.translate(name)
 		try:
-			u = Pyro.core.PyroURI('')
-			u.reinitFromString(open(fn).read())
-			return u
+			return Pyro.core.PyroURI(open(fn).read())
 		except IOError,x:
 			if x.errno==errno.ENOENT:
 				raise Pyro.errors.NamingError('name not found',name)
@@ -1161,7 +1161,7 @@ class NameServerStarter:
 	def waitUntilStarted(self,timeout=None):
 		self.started.wait(timeout)
 		return self.started.isSet()
-	def _start(self,hostname=None, nsport=None, bcport=0, keep=0, persistent=0, dbdir=None, Guards=(None,None), allowmultiple=0, dontlookupother=0, verbose=0, startloop=1, role=(Pyro.constants.NSROLE_SINGLE,None), bcaddr=None ):
+	def _start(self,hostname=None, nsport=None, bcport=0, keep=0, persistent=0, dbdir=None, Guards=(None,None), allowmultiple=0, dontlookupother=0, verbose=0, startloop=1, role=(Pyro.constants.NSROLE_SINGLE,None), bcaddr=None, nobroadcast=False ):
 		if nsport is None:
 			if role[0]==Pyro.constants.NSROLE_SECONDARY:
 				nsport=Pyro.config.PYRO_NS2_PORT
@@ -1238,37 +1238,42 @@ class NameServerStarter:
 			daemon.useNameServer(ns)
 			NS_URI=daemon.connect(ns,Pyro.constants.NAMESERVER_NAME)
 
-		# Try to start the broadcast server. Binding on the magic "<broadcast>"
-		# address should work, but on some systems (windows) it doesn't.
-		# Therefore we first try "<broadcast>", if that fails, try "".
-		# If any address override is in place, use that ofcourse.
 		self.bcserver=None
-		notStartedError=""
-		msg = daemon.validateHostnameAndIP()
-		if msg:
-			Log.msg('NS daemon','Not starting broadcast server because of issue with daemon IP address.')
+		if nobroadcast:
+			Log.msg('NS daemon','Not starting broadcast server due to config option')
 			if verbose:
-				print "Not starting broadcast server"
+				print "Not starting broadcast server."
 		else:
-			if bcaddr:
-				broadcastAddresses=[bcaddr]
+			# Try to start the broadcast server. Binding on the magic "<broadcast>"
+			# address should work, but on some systems (windows) it doesn't.
+			# Therefore we first try "<broadcast>", if that fails, try "".
+			# If any address override is in place, use that ofcourse.
+			notStartedError=""
+			msg = daemon.validateHostnameAndIP()
+			if msg:
+				Log.msg('NS daemon','Not starting broadcast server because of issue with daemon IP address.')
+				if verbose:
+					print "Not starting broadcast server."
 			else:
-				broadcastAddresses=["<broadcast>", "", "255.255.255.255"]
-			for bc_bind in broadcastAddresses:
-				try:
-					self.bcserver = BroadcastServer((bc_bind,bcport),bcRequestHandler,norange=1)
-					break
-				except socket.error,x:
-					notStartedError += str(x)+" "
-			if not self.bcserver:
-				print 'Cannot start broadcast server. Is somebody else occupying our broadcast port?'
-				print 'The error(s) were:',notStartedError
-				print '\nName Server was not started!'
-				raise Pyro.errors.NamingError("cannot start broadcast server")
-	
-			if Guards[1]:
-				self.bcserver.setRequestValidator(Guards[1])
-			self.bcserver.keepRunning(keep)
+				if bcaddr:
+					broadcastAddresses=[bcaddr]
+				else:
+					broadcastAddresses=["<broadcast>", "", "255.255.255.255"]
+				for bc_bind in broadcastAddresses:
+					try:
+						self.bcserver = BroadcastServer((bc_bind,bcport),bcRequestHandler,norange=1)
+						break
+					except socket.error,x:
+						notStartedError += str(x)+" "
+				if not self.bcserver:
+					print 'Cannot start broadcast server. Is somebody else occupying our broadcast port?'
+					print 'The error(s) were:',notStartedError
+					print '\nName Server was not started!'
+					raise Pyro.errors.NamingError("cannot start broadcast server")
+		
+				if Guards[1]:
+					self.bcserver.setRequestValidator(Guards[1])
+				self.bcserver.keepRunning(keep)
 
 		if keep:
 			ns.ignoreShutdown=True
@@ -1435,15 +1440,16 @@ class NameServerStarter:
 
 def main(argv):
 	Args = Pyro.util.ArgParser()
-	Args.parse(argv,'hkmrvn:p:b:c:d:s:i:1:2:')
+	Args.parse(argv,'hkmrvxn:p:b:c:d:s:i:1:2:')
 	if Args.hasOpt('h'):
-		print 'Usage: ns [-h] [-k] [-m] [-n hostname] [-p port] [-b bcport] [-c bcaddr]'
+		print 'Usage: pyro-ns [-h] [-k] [-m] [-r] [-x] [-n hostname] [-p port] [-b bcport] [-c bcaddr]'
 		print '          [-i identification] [-d [databasefile]] [-s securitymodule]'
 		print '          [-1 [host:port]] [-2 [host:port]] [-v]'
 		print '  where -p = NS server port (0 for auto)'
 		print '        -n = non-default hostname to bind on'
 		print '        -b = NS broadcast port'
 		print '        -c = NS broadcast address override'
+		print '        -x = do not start a broadcast listener'
 		print '        -m = allow multiple instances in network segment'
 		print '        -r = don\'t attempt to find already existing nameservers'
 		print '        -k = keep running- do not respond to shutdown requests'
@@ -1461,6 +1467,7 @@ def main(argv):
 		port=int(port)
 	bcport = int(Args.getOpt('b',0))
 	bcaddr = Args.getOpt('c',None)
+	nobroadcast = Args.hasOpt('x')
 	
 	role=Pyro.constants.NSROLE_SINGLE
 	roleArgs=None
@@ -1506,7 +1513,12 @@ def main(argv):
 		starter=NameServerStarter()
 
 	try:
-		starter.start(host,port,bcport,keep,persistent,dbdir,Guards,allowmultiple,dontlookupother,verbose,role=(role,roleArgs),bcaddr=bcaddr)
+		starter.start(host,port,bcport,keep,persistent,dbdir,Guards,allowmultiple,dontlookupother,verbose,role=(role,roleArgs),bcaddr=bcaddr,nobroadcast=nobroadcast)
 	except (Pyro.errors.NamingError, Pyro.errors.DaemonError),x:
 		# this error has already been printed, just exit.
 		pass
+
+
+# allow easy starting of the NS by using python -m
+if __name__=="__main__":
+	main(sys.argv[1:])

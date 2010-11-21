@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: nsc.py,v 2.19.2.5 2008/06/24 21:38:33 irmen Exp $
+#	$Id: nsc.py,v 2.19.2.7 2009/03/27 14:30:29 irmen Exp $
 #	Pyro Name Server Control Tool
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -12,9 +12,9 @@ import Pyro.constants
 import Pyro.util
 import Pyro.core
 import Pyro.errors
-from naming import NameServerLocator
-from errors import NamingError, ConnectionDeniedError, PyroError
-from protocol import getHostname
+from Pyro.naming import NameServerLocator
+from Pyro.errors import NamingError, ConnectionDeniedError, PyroError
+from Pyro.protocol import getHostname
 
 class PyroNSControl:
 	def args(self, args):
@@ -176,7 +176,7 @@ class PyroNSControl:
 
 def usage():
 	print 'PyroNS control program - usage is as follows;'
-	print '>> nsc [-h host] [-p port] [-c bcaddr] [-i identification] command [args...]'
+	print '>> pyro-nsc [-h host] [-p port] [-c bcaddr] [-i identification] command [args...]'
 	print 'where command is one of: ping, list, listall, resolve, register, remove, creategroup, deletegroup, showmeta, setmeta, resync, shutdown'
 	print '      host is the host where the NS should be contacted'
 	print '      port is the non-standard Pyro NS broadcast port'
@@ -226,3 +226,7 @@ def main(argv):
 		print '<<<<<<< end of Pyro traceback'
 
 
+# allow easy usage with python -m
+if __name__=="__main__":
+	import sys
+	main(sys.argv[1:])
