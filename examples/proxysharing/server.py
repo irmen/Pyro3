@@ -2,22 +2,14 @@
 import Pyro.core
 import Pyro.naming
 from Pyro.errors import NamingError
-import tst
 
-# The testclass object.
-# make a Pyro object from our regular class.
-# (note that this can also be done using delegation)
-
-class testclass(Pyro.core.ObjBase, tst.testclass):
+class RemoteObject(Pyro.core.ObjBase):
 	def __init__(self):
 		Pyro.core.ObjBase.__init__(self)
-
-######## main program
-
-Pyro.core.initServer()
-
+	def method(self, arg):
+		return " ~~this is the remote result~~ "
+	
 ns=Pyro.naming.NameServerLocator().getNS()
-
 daemon=Pyro.core.Daemon()
 daemon.useNameServer(ns)
 
@@ -25,7 +17,7 @@ try:
     ns.createGroup(":test")
 except NamingError:
     pass
-uri=daemon.connect(testclass(),":test.simple")
+uri=daemon.connect(RemoteObject(),":test.proxysharing")
 
 print "Server is ready."
 daemon.requestLoop()

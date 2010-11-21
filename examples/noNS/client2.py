@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 #
 #	Client that doesn't use the Name Server. Uses URI directly.

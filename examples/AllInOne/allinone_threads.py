@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 #
 # This application creates a Name Server, Event Server,
 # Pyro server, and clients, and uses threads to keep them
@@ -19,19 +19,12 @@ import time
 import random
 import string
 import Pyro.naming
-from Pyro.protocol import getHostname
 import Pyro.EventService.Server
 from Pyro.EventService.Clients import Publisher, Subscriber
 from Pyro.errors import *
 import Pyro.util
 
 from threading import Thread
-
-
-# Pyro.config.PYRO_NS_BC_PORT=19998
-# Pyro.config.PYRO_NS_PORT=19999
-Pyro.config.PYRO_NS_HOSTNAME=getHostname()
-
 
 
 ####################### EVENT SERVER LISTENER & PUBLISHER #################
@@ -62,7 +55,7 @@ class NameServer(Thread):
 		self.starter = Pyro.naming.NameServerStarter()  # no special identification
 	def run(self):
 		print "Launching Pyro Name Server"
-		self.starter.start(hostname=Pyro.config.PYRO_NS_HOSTNAME)
+		self.starter.start()
 	def waitUntilStarted(self):
 		return self.starter.waitUntilStarted()
 		
@@ -73,7 +66,9 @@ class EventServer(Thread):
 		self.starter = Pyro.EventService.Server.EventServiceStarter()  # no special identification
 	def run(self):
 		print "Launching Pyro Event Server"
-		self.starter.start(hostname=Pyro.config.PYRO_NS_HOSTNAME)
+		# we're using the OS's automatic port allocation
+		es_port=0 
+		self.starter.start(port=es_port, norange=(es_port==0))
 	def waitUntilStarted(self):
 		return self.starter.waitUntilStarted()
 
@@ -85,13 +80,14 @@ class PyroServer(Thread):
 	def run(self):
 		Pyro.core.initServer()
 		print "Creating Pyro server objects and Pyro Daemon"
-		daemon = Pyro.core.Daemon()
+		# we're using the OS's automatic port allocation
+		port=0
+		daemon = Pyro.core.Daemon(port=port, norange=(port==0))
 		daemon.useNameServer(Pyro.naming.NameServerLocator().getNS())
 		daemon.connect(PropertyChangePublisher("publisher1"), "publisher1")
 		daemon.connect(PropertyChangePublisher("publisher2"), "publisher2")
 		daemon.connect(PropertyChangePublisher("publisher3"), "publisher3")
 		self.ready=1
-		print "PYRO SERVER ACTIVATED"
 		daemon.requestLoop()
 
 class EventListener(Thread):
@@ -122,10 +118,12 @@ def main():
 	ess.waitUntilStarted()		# wait until the ES has fully started.
 	
 	EventListener().start()
+
 	server=PyroServer()
 	server.start()
 	while not server.ready:
 		time.sleep(1)
+
 	p1 = Pyro.core.getProxyForURI("PYRONAME://publisher1")
 	p2 = Pyro.core.getProxyForURI("PYRONAME://publisher2")
 	p3 = Pyro.core.getProxyForURI("PYRONAME://publisher3")

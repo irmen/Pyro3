@@ -1,8 +1,12 @@
 import tasks.task
 
-import array
-import md5
-import time
+import array, time
+try:
+	import hashlib
+	md5=hashlib.md5
+except ImportError:
+	import md5
+	md5=md5.md5
 
 # Determine how fast your cpu is (est.)
 # this is used to create a reasonable progress update rate.
@@ -10,7 +14,7 @@ start=time.time()
 print "(benchmarking...)"
 CPU_SPEED=0
 while time.time()-start < 1:
-    void=md5.new("benchmark").digest()
+    void=md5("benchmark").digest()
     CPU_SPEED+=1
 CPU_SPEED /= 2
 
@@ -26,7 +30,7 @@ class CrackTask(tasks.task.PartitionableTask):
     def __init__(self, sourceText):
         tasks.task.PartitionableTask.__init__(self,"md5 guesser")
         self.source=sourceText                      # we will guess this
-        self.md5hash=md5.new(self.source).digest()   # we will crack this
+        self.md5hash=md5(self.source).digest()   # we will crack this
         self.result=None
     def split(self, numPiecesHint):
         pieces=numPiecesHint*3 # number of pieces
@@ -87,7 +91,7 @@ class CrackTaskPartition(tasks.task.TaskPartition):
             while not self.result and not self.abort:
                 for i in range(CPU_SPEED):
                     s = strings.next()
-                    if md5.new(s).digest() == self.md5hash:
+                    if md5(s).digest() == self.md5hash:
                         self.result=s # FOUND IT!!
                         return
                 counter+=CPU_SPEED

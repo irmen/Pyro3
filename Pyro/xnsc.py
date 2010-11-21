@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: xnsc.py,v 2.15 2006/11/20 18:21:39 irmen Exp $
+#	$Id: xnsc.py,v 2.15.2.4 2008/06/01 09:45:35 irmen Exp $
 #	Pyro Name Server Control Tool with GUI 
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -8,12 +8,11 @@
 #
 #############################################################################
 
+import sys, time
 from Tkinter import *
 from naming import NameServerLocator
 from errors import NamingError, ConnectionClosedError
-import Pyro
-import core
-import sys
+import Pyro.core
 
 class xnscFrame:
 
@@ -22,6 +21,7 @@ class xnscFrame:
 
 	def clearOutput(self):
 		self.text_out.delete('1.0',AtEnd())
+		self.outputln(time.asctime())
 
 	def output(self,txt):
 		self.text_out.insert(AtEnd(),txt)
@@ -37,7 +37,7 @@ class xnscFrame:
 		self.clearOutput()
 		hst,prt = None,None
 		self.authID = self.entry_AuthID.get()
-		if event and event.char=='\r':
+		if event:
 			# Pressed <return> in entry box
 			addr = self.entry_NSloc.get().split(':')
 			hst=addr[0]
@@ -48,8 +48,9 @@ class xnscFrame:
 		self.NSport = prt
 		self.outputln('*** finding NS')
 		locator=NameServerLocator(identification=self.authID)
-		try:	
-			self.NS=locator.getNS(hst,prt,trace=1)
+		bcaddr=self.entry_BCAddr.get().strip() or None
+		try:
+			self.NS=locator.getNS(hst,prt,trace=1,bcaddr=bcaddr)
 			self.entry_NSloc.delete(0,AtEnd())
 			self.entry_NSloc.insert(AtEnd(),self.NS.URI.address+':'+str(self.NS.URI.port))
 			self.entry_AuthID.delete(0,AtEnd())
@@ -125,7 +126,7 @@ class xnscFrame:
 			(name,uri) = self.entry_arg.get().split()
 			try:
 				self.NS.register(name,uri)
-				uri=core.PyroURI(uri)
+				uri=Pyro.core.PyroURI(uri)
 				self.outputln('  '+name+'  -->  '+str(uri))
 			except NamingError,x:
 				self.printError("Error from NS", x)
@@ -266,15 +267,20 @@ class xnscFrame:
 		Label(frame_top1,text='(press enter)').pack(side=LEFT,anchor=W)
 		frame_top1.pack(fill=X)
 		frame_top2 = Frame(frame_top,borderwidth=0)
+		frame_top3 = Frame(frame_top,borderwidth=0)
 		Label(frame_top2,text='Authorization ID:').pack(side=LEFT,anchor=W)
 		self.entry_AuthID=Entry(frame_top2)
 		self.entry_AuthID.bind('<Return>',self.b_findNS)
 		self.entry_AuthID.pack(expand=1,fill=X,side=LEFT)
-		self.but_findNS=Button(frame_top2,text='Auto Discover NS',command=self.b_findNS)
-		self.QUIT=Button(frame_top2,text='QUIT',command=self.quit)
+		Label(frame_top3,text='Broadcast address:').pack(side=LEFT,anchor=W)
+		self.entry_BCAddr=Entry(frame_top3)
+		self.entry_BCAddr.pack(expand=1,fill=X,side=LEFT)
+		self.but_findNS=Button(frame_top3,text='Auto Discover NS',command=self.b_findNS)
+		self.QUIT=Button(frame_top3,text='QUIT',command=self.quit)
 		self.QUIT.pack(side=RIGHT)
 		self.but_findNS.pack(side=RIGHT)
 		frame_top2.pack(fill=X)
+		frame_top3.pack(fill=X)
 		frame_top.pack(fill=X)
 		
 		frame_cmds=Frame(self.master)

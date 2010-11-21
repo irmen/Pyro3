@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 5-nameserver.html,v 2.33.2.1 2007/04/30 14:25:56 irmen Exp $ -->
+<!-- $Id: 5-nameserver.html,v 2.33.2.6 2008/06/28 23:41:02 irmen Exp $ -->
 <head>
   <title>PYRO - Name Server</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -19,7 +19,7 @@
   </table>
 <hr></div>
 
-  <h2><u>5. Pyro Name Server</u></h2>
+  <h2>5. Pyro Name Server</h2>
 
   <ul>
     <li><a href="#cmds">The commands for starting a Name Server</a></li>
@@ -47,12 +47,14 @@
   <dl>
     <dt><code>pyro-ns</code> &nbsp;&nbsp;(Name Server)</dt>
 
-    <dd>- Arguments: [-h] [-k] [-m] [-n hostname] [-p port] [-b port] [-i identification] [-d [databasefile]] [-s
+    <dd>- Arguments: [-h] [-k] [-m] [-r] [-n hostname] [-p port] [-b port] [-i identification] [-d [databasefile]] [-s
     securitymodule] [-1 [host:port]] [-2 [host:port]] [-v]<br>
     - Starts the Pyro Name Server. The '-h' argument prints some help, '-k' makes it immune to shutdown requests (a
     crude form of security against malicious shutdown requests), '-m' allows multiple Name Servers to be started in the
-    same network segment (default=not allowed), '-n hostname' selects the hostname the server should bind on (useful on
-    systems with multiple network adapters/hostnames), '-p port' specifies the Name Server port number, '-b port'
+    same network segment (default=not allowed), 
+    '-r' means that no lookup will be done to check for an already existing nameserver,
+    '-n hostname' selects the hostname the server should bind on (useful on
+    systems with multiple network adapters/hostnames), '-p port' override the Name Server port number (0=random), '-b port'
     specifies the broadcast port number. With '-i identification' you can supply the authentication passphrase that
     will be required to connect to this server. When it contains spaces, use quotes around it. '-d' starts the
     persistent server. You can provide an optional filename to the last option to specify the database file. The '-s'
@@ -267,7 +269,8 @@ be found. This disables the broadcast lookup and uses the one below instead.</p>
 	it directly on the machine itself and localhost. This allows you to use it even on a system
 	where the name server is running on localhost (for some reason) without having to set 
 	<code>PYRO_NS_HOSTNAME</code> to <code>localhost</code>.</p>
-
+<p>You can override the default broadcast address (255.255.255.255) by setting the <code>bcaddr</code> parameter:
+	<pre>ns=locator.getNS(bcaddr="192.168.1.255")</pre>
     </li>
 
     <li>Use the <code>NameServerLocator</code>'s direct host mechanism. This only works if you know the host on which

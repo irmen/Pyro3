@@ -1,6 +1,6 @@
 #############################################################################
 #
-#     $Id: remote.py,v 1.6 2005/02/12 23:45:31 irmen Exp $
+#     $Id: remote.py,v 1.6.2.2 2008/06/28 21:45:29 irmen Exp $
 #     simple Pyro connection module, originally written by John Wiegley
 #
 #     This is part of "Pyro" - Python Remote Objects
@@ -251,9 +251,10 @@ def unwrap(value):
 	t = type(value)
 	if t is types.InstanceType and isinstance(value, DynamicProxy):
 		if pyro_daemon:
-			oid = value.objectID
-			if pyro_daemon.implementations.has_key(oid):
-				return pyro_daemon.implementations[oid][0]
+			try:
+				return pyro_daemon.getLocalObject(value.objectID)
+			except KeyError:
+				pass
 		return value
 	elif t is types.ListType:
 		for i in range(len(value)):
@@ -427,11 +428,9 @@ def interrupt(*args):
 	global abort
 	abort = true
 
-signal.signal(signal.SIGINT, interrupt)
-
-if sys.platform != "win32":
-	signal.signal(signal.SIGHUP, interrupt)
-	signal.signal(signal.SIGQUIT, interrupt)
+if hasattr(signal,'SIGINT'): signal.signal(signal.SIGINT, interrupt)
+#if hasattr(signal,'SIGHUP'): signal.signal(signal.SIGHUP, interrupt)
+#if hasattr(signal,'SIGQUIT'): signal.signal(signal.SIGQUIT, interrupt)
 
 def handle_requests(wait_time = None, callback = None):
 	global abort

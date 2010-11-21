@@ -11,6 +11,7 @@ h1,h2,h3,h4,h5,h6,h7 {
  font-family: "Trebuchet MS",Tahoma,helvetica,sans-serif;
  color: #444;
  background-color: #eee;
+ text-decoration: underline;
 }
 
 table,pre {
@@ -37,5 +38,5 @@ table.noborder th,table.noborder tr,table.noborder td {
 }
 
 tt,code {
- font-family: "Bitstream Vera Sans Mono", mono;
+ font-family: "Bitstream Vera Sans Mono", monospace;
 }

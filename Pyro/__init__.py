@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: __init__.py,v 2.10 2007/03/15 18:50:24 irmen Exp $
+#	$Id: __init__.py,v 2.10.2.1 2008/05/17 09:56:01 irmen Exp $
 #	Pyro file to make Pyro a package, and to set up configuration.
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -24,10 +24,10 @@
 # However, currently the class initializer adds configuration items
 # as regular class data members.
 
+import os
+import Pyro.configuration
 
-import configuration, os
-
-config = configuration.Config()
+config = Pyro.configuration.Config()
 try:
 	confFile = os.environ['PYRO_CONFIG_FILE']
 except KeyError:
@@ -35,6 +35,3 @@ except KeyError:
 if not confFile and os.path.isfile('Pyro.conf'):
 	confFile='Pyro.conf'
 config.setup(confFile)
-
-
-

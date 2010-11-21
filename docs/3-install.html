@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 3-install.html,v 2.44 2007/03/07 23:08:19 irmen Exp $ -->
+<!-- $Id: 3-install.html,v 2.44.2.8 2008/07/07 16:19:46 irmen Exp $ -->
 <head>
   <title>PYRO - Installation</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -19,7 +19,8 @@
   </table>
 <hr></div>
 
-  <h2><u>3. Installation and Configuration</u></h2>Please read this entire chapter before trying to install Pyro.&nbsp;
+  <h2>3. Installation and Configuration</h2>
+  Please read this entire chapter before trying to install Pyro.&nbsp;
   Not that it's complex, but just that you've seen the choices you have to make.
 
   <p><strong>Installation</strong></p>
@@ -339,7 +340,7 @@
       <td>number</td>
 
       <td>The base socket number of the range of socket numbers that the Pyro daemon can use to listen for incoming
-      requests (Pyro method calls).</td>
+      requests (Pyro method calls). Set to 0 to let the operating system choose a random port.</td>
 
       <td>7766</td>
     </tr>
@@ -406,7 +407,7 @@
 
       <td>string</td>
 
-      <td>The hostname that is tried to find the NameServer on, when the broadcast lookup mechanism fails.</td>
+      <td>The hostname that is initially tried to find the NameServer on, or when the broadcast lookup mechanism fails.</td>
 
       <td><i>empty</i></td>
     </tr>
@@ -417,19 +418,25 @@
       <td>number</td>
 
       <td>The socket number on which the Name Server will listen for incoming requests (Pyro method calls, in
-      fact).</td>
-
+      fact). Set to 0 to let the operating system choose a random port. Note that if you set this to 0, a client cannot use 
+      this config item to directly connect to the NS. It will have to use the broadcast lookup.</td>
       <td>9090</td>
     </tr>
 
     <tr>
+      <td><code>PYRO_NS_BC_ADDR</code></td>
+      <td>string</td>
+      <td>Overrides the default broadcast address. It is used by the nameserver to bind the broadcast
+      	listener on this broadcast address, and by the name server locator when it uses broadcast discovery.
+      	When empty, the default broadcast address is used (usually 255.255.255.255).</td>
+      <td><i>empty</i></td>
+    </tr>
+
+    <tr>
       <td><code>PYRO_NS_BC_PORT</code></td>
-
       <td>number</td>
-
       <td>The socket number on which the Name Server will listen for broadcast requests (usually to find the
       location).</td>
-
       <td>9090</td>
     </tr>
 
@@ -451,6 +458,13 @@
       <td>Like above, but for the second (paired) Name Server.</td>
 
       <td>9091</td>
+    </tr>
+
+    <tr>
+      <td><code>PYRO_NS2_BC_ADDR</code></td>
+      <td>string</td>
+      <td>Like above, but for the second (paired) Name Server.</td>
+      <td><i>empty</i></td>
     </tr>
 
     <tr>
@@ -526,6 +540,18 @@
 
       <td>client.pem</td>
     </tr>
+    <tr>
+      <td><code>PYROSSL_POSTCONNCHECK</code></td>
+
+      <td>boolean</td>
+
+      <td>Tells the SSL layer if it should do 'post-connection' validations on the certificate(s) for instance.
+        Set it to 0 to disable these checks (not advised! But convenient to be able to use a
+        certificate that hasn't got a matching commonName or stuff like that) Default is 1: 
+        the SSL layer will do its checks as enabled by its own default settings.</td>
+      <td>1</td>
+    </tr>
+
   </table>
 
   <p>There are several ways to change the default settings:</p>

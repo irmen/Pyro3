@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 import sys
 from Pyro.ext import remote_nons
@@ -17,5 +17,5 @@ remote_nons.provide_server_object(object.myObject(), 'quickstart',
                                 'localhost', object.PYRO_PORT)
 
 print 'Waiting for requests.'
-sys.exit(remote_nons.handle_requests())
+sys.exit(remote_nons.handle_requests(wait_time=2))
 

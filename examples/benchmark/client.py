@@ -9,7 +9,6 @@ import bench
 
 object = testclient.getproxy('benchmark')
 object._setOneway('oneway')
-object._setTimeout(4)
 
 def f1(): void=object.length('Irmen de Jong')
 def f2(): void=object.timestwo(21)
@@ -32,7 +31,7 @@ funcs = (f1,f2,f3,f4,f5,f6,f7,f8,f9,fa,fb,fc,fd,fe,ff)
 print '-------- BENCHMARK REMOTE OBJECT ---------'
 print 'Pay attention to the "fe" test -- this is a Oneway call and is *fast*'
 begin = time.time()
-iters = 500
+iters = 1000
 for f in funcs:
 	print iters,'times',f.__name__,
 	sys.stdout.flush()
@@ -49,7 +48,7 @@ print 'avg. time per method call: %.4f' % avg_pyro_msec ,"msec"
 print '-------- BENCHMARK LOCAL OBJECT ---------'
 object=bench.bench()
 begin = time.time()
-iters = 10000
+iters = 200000
 for f in funcs:
 	print iters,'times',f.__name__,
 	voor = time.time()

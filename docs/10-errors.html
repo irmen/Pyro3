@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 10-errors.html,v 2.30 2007/02/27 01:03:56 irmen Exp $ -->
+<!-- $Id: 10-errors.html,v 2.30.2.3 2008/07/07 16:19:46 irmen Exp $ -->
 <head>
   <title>PYRO - Errors and Troubleshooting</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -19,7 +19,7 @@
   </table>
 <hr></div>
 
-  <h2><u>10. Errors and Troubleshooting</u></h2>The <a href="#errors">Pyro Errors</a> section describes the various
+  <h2>10. Errors and Troubleshooting</h2>The <a href="#errors">Pyro Errors</a> section describes the various
   errors that can occur when using Pyro. It only describes Pyro's custom exceptions - other Python exceptions may occur
   due to other runtime problems.
 
@@ -295,11 +295,20 @@
   string and you have not supplied a default value to <code>getOpt</code> (otherwise that default value
   is returned).
 
-  <h3><a name="shoot" id="shoot"></a>Troubleshooting</h3><strong>Online Pyro troubleshooting wiki:</strong> I've put up
+  <h3><a name="shoot" id="shoot"></a>Troubleshooting</h3>
+  <p><strong>Online Pyro troubleshooting wiki:</strong> I've put up
   some wiki (interactive) pages about Pyro. One of them is this one: <a href=
   "http://www.razorvine.net/python/PyroTroubleshooting">Pyro Troubleshooting</a>. Have a look there if you can't find
   an answer below. (The other pages can be found by going to <a href="http://www.razorvine.net/python/FrontPage">the
-  front page</a>).<br>
+front page</a>).</p>
+<p><strong>Using IronPython or Jython?</strong> Each of these has its own possible issues (when compared to standard CPython).
+	If you are using one of these instead of standard CPython, you may experience problems or unexpected behaviour that
+	are not mentioned elsewhere in this chapter or manual.
+	Because both of them are a bit of a moving target, specific issues related to them are 
+	discussed on the wiki pages: 
+	<a href="http://www.razorvine.net/python/PyroAndJython">Jython</a> ;
+	<a href="http://www.razorvine.net/python/PyroAndIronPython">IronPython</a> .
+	</p>
   <br>
 
   <table>
@@ -456,16 +465,6 @@
       <td>You are probably not returning a proxy but the object itself.</td>
 
       <td>Return a proxy instead: <code>return Obj.getAttrProxy()</code></td>
-    </tr>
-
-    <tr>
-      <td>When using threads: strange PicklingError, ProtocolError, or other socket related errors sometimes occur</td>
-
-      <td>You are probably using a single Pyro proxy object from different threads, that is not allowed</td>
-
-      <td>Every thread must have its own proxy object, or you have to use thread-locking around the remote calls.
-      Probably the easiest is to just look up the required object from inside every thread, or use
-      <code>copy.copy(obj)</code> to clone an already obtained proxy.</td>
     </tr>
 
     <tr>

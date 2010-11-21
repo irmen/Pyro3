@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: util2.py,v 2.2 2004/02/04 23:27:00 irmen Exp $
+#	$Id: util2.py,v 2.2.4.1 2008/05/16 18:34:11 irmen Exp $
 #	Pyro Utilities (part 2, to avoid circular dependencies)
 #	User code should never import this, always use Pyro.util!
 #
@@ -9,18 +9,28 @@
 #
 #############################################################################
 
+_supports_mt=None
+_supports_comp=None
+
 def supports_multithreading():
-	try:
-		from threading import Thread, Lock
-		return 1
-	except:
-		return 0
+	global _supports_mt
+	if _supports_mt is None:
+		try:
+			from threading import Thread, Lock
+			_supports_mt=1
+		except:
+			_supports_mt=0
+	return _supports_mt
 	
 def supports_compression():
-	try:
-		import zlib; return 1
-	except:
-		return 0
+	global _supports_comp
+	if _supports_comp is None:
+		try:
+			import zlib
+			_supports_comp=1
+		except:
+			_supports_comp=0
+	return _supports_comp
 
 if supports_multithreading():
 	import threading

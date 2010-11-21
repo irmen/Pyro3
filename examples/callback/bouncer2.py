@@ -22,9 +22,6 @@ class Bouncer(Pyro.core.CallbackObjBase):
 		message.append(self.name)
 		self.callbackMutex.acquire()
 		try:
-			# claim the callback proxy for ourselves.
-			# we can do this now because we are in a thread mutex.
-			self.callback._transferThread()
 			result=self.callback.process(message)
 		finally:
 			self.callbackMutex.release()

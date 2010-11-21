@@ -1,13 +1,11 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 # Test the logging facilities.
 
 # Set the logfiles
-import Pyro
+import Pyro.util
 Pyro.config.PYRO_LOGFILE = 'Pyro_sys_log'
 Pyro.config.PYRO_USER_LOGFILE = 'Pyro_user_log'
-
-import Pyro.util
 
 print 'Creating the logging objects.'
 

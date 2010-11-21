@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: NS_NtService.py,v 1.4.4.1 2007/04/30 15:01:05 irmen Exp $
+#	$Id: NS_NtService.py,v 1.4.4.2 2008/05/17 09:56:01 irmen Exp $
 #	An NT service that runs the Pyro Name Server
 #   Author: Syver Enstad  syver-en@online.no
 #
@@ -23,7 +23,6 @@ def setConfig():
 	Pyro.config.PYRO_NS_URIFILE = os.path.join(Pyro.config.PYRO_STORAGE, "Pyro_NS_URI.txt")
 
 import os,sys
-import Pyro
 import Pyro.util
 setConfig()
 Log=Pyro.util.Log

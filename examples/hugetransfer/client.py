@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 import sys, os
 
 sys.path.insert(0,os.pardir)	# to find testclient.py
@@ -6,7 +6,8 @@ sys.path.insert(0,os.pardir)	# to find testclient.py
 import testclient
 
 obj = testclient.getproxy('hugetransfer')
-# obj._setTimeout(2)
+#if os.name!="java":
+#	object._setTimeout(4)
 
 import time
 

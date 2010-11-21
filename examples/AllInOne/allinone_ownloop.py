@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 #
 # This application creates a Name Server, Event Server,
 # Pyro server, and clients, and uses a custom event loop to keep them
@@ -15,7 +15,6 @@ import time
 import random
 import string
 import Pyro.naming
-from Pyro.protocol import getHostname
 import Pyro.EventService.Server
 from Pyro.EventService.Clients import Publisher, Subscriber
 from Pyro.errors import *
@@ -23,11 +22,6 @@ import Pyro.util
 
 import select
 from threading import Thread
-
-
-# Pyro.config.PYRO_NS_BC_PORT=19998
-# Pyro.config.PYRO_NS_PORT=19999
-Pyro.config.PYRO_NS_HOSTNAME=getHostname()
 
 
 
@@ -139,24 +133,28 @@ def main():
 	# invocations (for instance, the ES needs the NS when it starts...)
 	print "STARTING NAME SERVER"
 	starter = Pyro.naming.NameServerStarter()  # no special identification
-	starter.initialize(hostname=Pyro.config.PYRO_NS_HOSTNAME)
+	starter.initialize()
 	server.setNameServerStarter(starter)
-	print "NAME SERVER STARTED"
+	print "NAME SERVER STARTED ON PORT",starter.daemon.port
 	
 	print "STARTING EVENT SERVER"
 	starter = Pyro.EventService.Server.EventServiceStarter()  # no special identification
-	starter.initialize(hostname=Pyro.config.PYRO_NS_HOSTNAME)
+	# use port autoselect
+	es_port=0
+	starter.initialize(port=es_port, norange=(es_port==0))
 	server.setEventServerStarter(starter)
-	print "EVENT SERVER STARTED"
+	print "EVENT SERVER STARTED ON PORT",starter.daemon.port
 
 	print "CREATING PYRO SERVER OBJECTS AND PYRO DAEMON"
-	daemon = Pyro.core.Daemon()
+	# use port autoselect
+	port=0
+	daemon = Pyro.core.Daemon(port=port, norange=(port==0))
 	daemon.useNameServer(Pyro.naming.NameServerLocator().getNS())
 	daemon.connect(PropertyChangePublisher("publisher1"), "publisher1")
 	daemon.connect(PropertyChangePublisher("publisher2"), "publisher2")
 	daemon.connect(PropertyChangePublisher("publisher3"), "publisher3")
 	server.setPyroDaemon(daemon)
-	print "PYRO SERVER ACTIVATED"
+	print "PYRO SERVER ACTIVATED ON PORT",daemon.port
 
 	listener = PropertyChangeListener()
 	listener.subscribeMatch("^publisher.\\..*$")

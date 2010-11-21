@@ -1,13 +1,12 @@
 #############################################################################
 #
-#	$Id: errors.py,v 2.19 2007/02/10 23:38:05 irmen Exp $
+#	$Id: errors.py,v 2.19.2.3 2008/05/17 09:56:01 irmen Exp $
 #	Pyro Exception Types
 #
 #	This is part of "Pyro" - Python Remote Objects
 #	which is (c) Irmen de Jong - irmen@users.sourceforge.net
 #
 #############################################################################
-
 
 #############################################################################
 # PyroError is the Pyro exception type which is used for problems WITHIN Pyro.
@@ -62,21 +61,13 @@ class _InternalNoModuleError(PyroError):
 #
 #############################################################################
 
+import Pyro.constants
+
 class PyroExceptionCapsule:
 	def __init__(self,excObj,args=None):
 		self.excObj = excObj
 		self.args=args  # if specified, this is the remote traceback info
 	def raiseEx(self):
-		# Modify the exception object to append some extra info to the message.
-		# NOTE: using 'args' is not recommended (deprecated) as written in
-		# the Python 2.5 manual (exception chapter)...
-		import Pyro.constants
-		if isinstance(self.excObj, Exception):
-			if not hasattr(self.excObj, "Pyro_traceback_set"):
-				self.excObj.Pyro_traceback_set = True
-				args=list(self.excObj.args) or []
-				args.append("This error occured remotely (Pyro). Remote traceback is available.")
-				self.excObj.args=tuple(args)
 		setattr(self.excObj,Pyro.constants.TRACEBACK_ATTRIBUTE,self.args)
 		raise self.excObj
 	def __str__(self):
@@ -89,4 +80,3 @@ class PyroExceptionCapsule:
 			return s+': '+str(self.args)
 	def __getitem__(self, i):
 		return self.args[i]	
-

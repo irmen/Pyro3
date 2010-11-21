@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 # This server code is nearly the same as server.py from the agent example.
 # except for the path insert because it has to look 1 dir higher,

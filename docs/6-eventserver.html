@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-  <!-- $Id: 6-eventserver.html,v 2.17.2.1 2007/04/30 14:25:56 irmen Exp $ -->
+  <!-- $Id: 6-eventserver.html,v 2.17.2.4 2008/07/07 16:19:46 irmen Exp $ -->
   <title>PYRO - Event Server</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -21,7 +21,7 @@
   </table>
 <hr></div>
 
-  <h2><u>6. Pyro Event Server</u></h2>
+  <h2>6. Pyro Event Server</h2>
 
   <ul>
     <li><a href="#intro">Introduction</a></li>
@@ -77,8 +77,7 @@
   handle the new event, possibly while the previous one is still being handled. <em>The<code>event</code> method may be
   called concurrently from several threads.</em> If you can't handle this, you have to use some form of thread locking
   in your client! (see the <code>threading</code> module on <code>Semaphore</code>), or
-  <code>Pyro.util.getLockObject</code>. Keep in mind that one of the things that requires a thread lock is <em>calling
-  Pyro methods on a Pyro object</em>, because the proxy cannot be shared among different threads!<br>
+  <code>Pyro.util.getLockObject</code>. <br>
   <br>
   <span style="font-weight: bold;">To summarize:<br></span></p>
 
@@ -112,7 +111,7 @@
 
     <dt>-p port</dt>
 
-    <dd>Change the port number the server uses.</dd>
+    <dd>Change the port number the server uses. (Omit to use Pyro defaults, 0 to let the operating system choose a random port).</dd>
 
     <dt>-i identification</dt>
 

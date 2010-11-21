@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 import sys, os
 import Pyro.core
 from Person import Person

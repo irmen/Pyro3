@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: protocol.py,v 2.94 2007/03/04 01:45:49 irmen Exp $
+#	$Id: protocol.py,v 2.94.2.24 2008/10/05 00:02:18 irmen Exp $
 #	Pyro Protocol Adapters
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -8,32 +8,42 @@
 #
 #############################################################################
 
-import socket, struct, os, time, sys, md5, hmac, types, random
+import socket, struct, os, time, sys, hmac, types, random, errno, select
 import imp, marshal, new, __builtin__
-import Pyro
-import util, constants
-
-if os.name!='java':		# Jython has no select module
-	import select, errno
+try:
+	import hashlib
+	md5=hashlib.md5
+except ImportError:
+	import md5
+	md5=md5.md5
+import Pyro.constants, Pyro.util
 
 from errors import *
 from errors import _InternalNoModuleError
-pickle = util.getPickle()
-Log = util.Log
-
+pickle = Pyro.util.getPickle()
+Log = Pyro.util.Log
 	
-if util.supports_multithreading():
+if Pyro.util.supports_multithreading():
 	from threading import Thread,currentThread
 	_has_threading = 1
 else:
 	_has_threading = 0
 
-if util.supports_compression():
+if Pyro.util.supports_compression():
 	import zlib
 	_has_compression = 1
 else:
 	_has_compression = 0
 
+
+try:
+	from M2Crypto import SSL
+	from M2Crypto.SSL import SSLError
+	if _has_threading:
+		import M2Crypto
+		M2Crypto.threading.init()
+except ImportError:
+	class SSLError(Exception): pass
 
 #------ Get the hostname (possibly of other machines) (returns None on error)
 def getHostname(ip=None):
@@ -58,17 +68,16 @@ def getIPAddress(host=None):
 
 
 # process optional timeout on socket.
-# XXX replace this with python's native socket timeouts. M2Crypto (SSL) needs special care...
+# notice the check for M2Crypto SSL sockets: if there's data pending,
+# a select on them will fail. So we avoid calling select in that case.
 def _sock_timeout_send(sock, timeout):
-	ssl_select_okay=not hasattr(sock,'pending') or sock.pending()==0
-	if timeout and ssl_select_okay:
+	if timeout and (not hasattr(sock,'pending') or sock.pending()==0):
 		r,w,e=safe_select([],[sock],[],timeout)
 		if not w:
 			raise TimeoutError('connection timeout sending')
 
 def _sock_timeout_recv(sock, timeout):
-	ssl_select_okay=not hasattr(sock,'pending') or sock.pending()==0
-	if timeout and ssl_select_okay:
+	if timeout and (not hasattr(sock,'pending') or sock.pending()==0):
 		r,w,e=safe_select([sock],[],[],timeout)
 		if not r:
 			raise TimeoutError('connection timeout receiving')
@@ -80,38 +89,29 @@ def _sock_timeout_recv(sock, timeout):
 # We need this because 'recv' isn't guaranteed to return all desired
 # bytes in one call, for instance, when network load is high.
 # Use a list of all chunks and join at the end: faster!
+# Handle EINTR states (interrupted system call) by just retrying.
 def sock_recvmsg(sock, size, timeout=0):
-	if hasattr(sock,'pending'):			# SSL socks have pending...
-		# when using SSL, other exceptions occur.
-		from M2Crypto.SSL import SSLError
+	while True:
 		try:
 			return _recv_msg(sock,size,timeout)
-		except SSLError:
-			raise ConnectionClosedError('connection lost')
-	else:
-		try:
-			return _recv_msg(sock,size,timeout)
-		except socket.error:
-			raise ConnectionClosedError('connection lost')
+		except socket.timeout:
+			raise TimeoutError("connection timeout receiving")
+		except socket.error,x:
+			if x.args[0] == errno.EINTR or (hasattr(errno, 'WSAEINTR') and x.args[0] == errno.WSAEINTR):
+				# interrupted system call, just retry
+				continue
+			raise ConnectionClosedError('connection lost: %s' % x)
+		except SSLError,x:
+			raise ConnectionClosedError('connection lost: %s' % x)
 
 # select the optimal recv() implementation
-if hasattr(socket.socket, "recvall"):   # Irmen's custom socket module extension, see Python patch #1103213
-	def _recv_msg(sock,size,timeout):
-		_sock_timeout_recv(sock,timeout)
-		chunk=sock.recvall(size)
-		if len(chunk)!=size:
-			err=ConnectionClosedError('connection lost')
-			err.partialMsg=chunk    # store the message that was received until now
-			raise err
-		return chunk
-elif hasattr(socket,"MSG_WAITALL") and not Pyro.config.PYRO_BROKEN_MSGWAITALL:
+if hasattr(socket,"MSG_WAITALL") and not Pyro.config.PYRO_BROKEN_MSGWAITALL:
 	def _recv_msg(sock,size,timeout):
 		_sock_timeout_recv(sock,timeout)
 		try:		
 			chunk=sock.recv(size, socket.MSG_WAITALL)   # receive all data in one call
 		except TypeError:
-			# XXX This is caused by a bug in the M2Crypto API, it doesn't like the MSG_WAITALL parameter
-			# Once the bug is fixed, the compat function can be rolled back into the _recv_msg below.
+			# M2Crypto sock.recv() doesn't support MSG_WAITALL parameter
 			return __recv_msg_compat(sock,size,timeout)
 		else:
 			if len(chunk)!=size:
@@ -132,6 +132,10 @@ def __recv_msg_compat(sock,size,timeout):   # compatibility implementation for n
 	while msglen<size:
 		chunk=sock.recv(min(60000,size-msglen))
 		if not chunk:
+			if hasattr(sock,'pending'):
+				# m2crypto ssl socket - they have problems with a defaulttimeout
+				if socket.getdefaulttimeout() != None:
+					raise ConnectionClosedError("m2crypto SSL can't be used when socket.setdefaulttimeout() has been set")
 			err = ConnectionClosedError('connection lost')
 			err.partialMsg=''.join(msglist)    # store the message that was received until now
 			raise err
@@ -181,9 +185,6 @@ PFLG_CHECKSUM =   0x02		# protocol flag: checksum body
 PFLG_XMLPICKLE_GNOSIS =  0x04		# protocol flag: used xml pickling (Gnosis)
 
 
-_agentImportLock=util.getLockObject()
-_remoteImportRLock=util.getRLockObject()
-
 class PYROAdapter:
 	headerFmt = '!4sHHlHl'	# version 4 header (id, ver, hsiz,bsiz,pflags,crc)
 	headerID = 'PYRO'
@@ -201,12 +202,26 @@ class PYROAdapter:
 		self.timeout=None			# socket timeout
 		self.ident=''				# connection identification
 		self.setNewConnectionValidator(DefaultConnValidator())
+		self.__getLockObjects()
 	def sendAccept(self, conn):		# called by TCPServer
 		sock_sendmsg(conn.sock, self.acceptMSG, self.timeout)
-	def sendDeny(self, conn, reasonCode=constants.DENIED_UNSPECIFIED):	# called by TCPServer
+	def sendDeny(self, conn, reasonCode=Pyro.constants.DENIED_UNSPECIFIED):	# called by TCPServer
 		sock_sendmsg(conn.sock, self.denyMSG+str(reasonCode)[0], self.timeout)
 	def __del__(self):
 		self.release(nolog=1)
+	def __getstate__(self):
+		# need to tweak the pickle because lock objects can't be pickled
+		d=self.__dict__.copy()
+		del d["lock"]
+		del d["bindlock"]
+		return d
+	def __setstate__(self, state):
+		# restore the pickle state and recreate the unpickleable lock objects
+		self.__dict__.update(state)
+		self.__getLockObjects()
+	def __getLockObjects(self):
+		self.lock=Pyro.util.getLockObject()
+		self.bindlock=Pyro.util.getLockObject()
 	def recvAuthChallenge(self, conn):
 		ver,body,pflags = self.receiveMsg(conn)
 		if ver==self.version and len(body)==self.AUTH_CHALLENGE_SIZE:
@@ -224,35 +239,39 @@ class PYROAdapter:
 			Log.error('PYROAdapter','incompatible protocol in URI:',URI.protocol)
 			raise ProtocolError('incompatible protocol in URI')
 		try:
-			self.URI=URI.clone()
-			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			sock.connect((URI.address, URI.port))
-			conn=TCPConnection(sock,sock.getpeername())
-			# receive the authentication challenge string, and use that to build the actual identification string.
+			self.bindlock.acquire()   # only 1 thread at a time can bind the URI
 			try:
-				authChallenge=self.recvAuthChallenge(conn)
-			except ProtocolError,x:
-				# check if we were denied
-				if hasattr(x,"partialMsg") and x.partialMsg[:len(self.denyMSG)]==self.denyMSG:
-					raise ConnectionDeniedError(constants.deniedReasons[int(x.partialMsg[-1])])
-				else:
-					raise
-			# reply with our ident token, generated from the ident passphrase and the challenge
-			msg = self._sendConnect(sock,self.newConnValidator.createAuthToken(self.ident, authChallenge, conn.addr, self.URI, None) )
-			if msg==self.acceptMSG:
-				self.conn=conn
-				self.conn.connected=1
-				Log.msg('PYROAdapter','connected to',str(URI))
-				if URI.protocol=='PYROLOC':
-					self.resolvePYROLOC_URI("PYRO") # updates self.URI
-			elif msg[:len(self.denyMSG)]==self.denyMSG:
+				self.URI=URI.clone()
+				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				sock.connect((URI.address, URI.port))
+				conn=TCPConnection(sock,sock.getpeername())
+				# receive the authentication challenge string, and use that to build the actual identification string.
 				try:
-					raise ConnectionDeniedError(constants.deniedReasons[int(msg[-1])])
-				except (KeyError,ValueError):
-					raise ConnectionDeniedError('invalid response')
-		except socket.error:
-			Log.msg('PYROAdapter','connection failed to URI',str(URI))
-			raise ProtocolError('connection failed')
+					authChallenge=self.recvAuthChallenge(conn)
+				except ProtocolError,x:
+					# check if we were denied
+					if hasattr(x,"partialMsg") and x.partialMsg[:len(self.denyMSG)]==self.denyMSG:
+						raise ConnectionDeniedError(Pyro.constants.deniedReasons[int(x.partialMsg[-1])])
+					else:
+						raise
+				# reply with our ident token, generated from the ident passphrase and the challenge
+				msg = self._sendConnect(sock,self.newConnValidator.createAuthToken(self.ident, authChallenge, conn.addr, self.URI, None) )
+				if msg==self.acceptMSG:
+					self.conn=conn
+					self.conn.connected=1
+					Log.msg('PYROAdapter','connected to',str(URI))
+					if URI.protocol=='PYROLOC':
+						self.resolvePYROLOC_URI("PYRO") # updates self.URI
+				elif msg[:len(self.denyMSG)]==self.denyMSG:
+					try:
+						raise ConnectionDeniedError(Pyro.constants.deniedReasons[int(msg[-1])])
+					except (KeyError,ValueError):
+						raise ConnectionDeniedError('invalid response')
+			except socket.error:
+				Log.msg('PYROAdapter','connection failed to URI',str(URI))
+				raise ProtocolError('connection failed')
+		finally:
+			self.bindlock.release()
 
 	def resolvePYROLOC_URI(self, newProtocol):
 		# This method looks up the object URI referenced by
@@ -260,7 +279,7 @@ class PYROAdapter:
 		objectName=self.URI.objectID
 		Log.msg('PYROAdapter','resolving PYROLOC name: ',objectName)
 		# call the special Resolve method on the daemon itself:
-		self.URI.objectID=constants.INTERNAL_DAEMON_GUID
+		self.URI.objectID=Pyro.constants.INTERNAL_DAEMON_GUID
 		result=self.remoteInvocation('ResolvePYROLOC',0,objectName)
 		# found it, switching to regular pyro protocol
 		self.URI.objectID=result
@@ -314,6 +333,9 @@ class PYROAdapter:
 	def setOneway(self, methods):
 		self.onewayMethods.extend(methods)
 	def setTimeout(self, timeout):
+		if os.name=='java':
+			# don't allow the use of the timeout feature in jython because it causes unreliable behavior
+			raise RuntimeError("using setTimeout causes unreliable behavior in Jython")
 		self.timeout=timeout
 	def setIdentification(self, ident, munge=True):
 		if ident:
@@ -335,13 +357,13 @@ class PYROAdapter:
 			# XXX because things might go wrong during the loading code below?
 			return
 		try:
-			_remoteImportRLock.acquire()	
 			# Called by the client-side to obtain code from the server-side.
 			# Call the special method on the server to retrieve the code.
 			# No need for complex exception stuff like when the server needs
 			# code from the client (see handleInvocation): because the server
 			# is a Pyro object we can actually *call* it :-)
-			module = self.remoteInvocation("remote_retrieve_code",0,mname)
+			module = self._remoteInvocationMobileCode("remote_retrieve_code",0,mname)
+			imp.acquire_lock()  # obtain the global import lock
 			mname = mname.split('.')
 			path = ''
 			mod = new.module("pyro-server-context")
@@ -368,10 +390,10 @@ class PYROAdapter:
 				while not loaded:
 					# install a custom importer to intercept any extra needed modules
 					# when executing the module code just obtained from the server
-					_agentImportLock.acquire()
+					imp.acquire_lock()
 					importer = agent_import(__builtin__.__import__)
 					__builtin__.__import__ = importer
-					_agentImportLock.release()
+					imp.release_lock()
 	 
 					try:
 						exec code in mod.__dict__
@@ -389,10 +411,26 @@ class PYROAdapter:
 				if importer is not None:
 					__builtin__.__import__ = importer.orig_import
 		finally:
-			_remoteImportRLock.release()
+			imp.release_lock() # release the global import lock
 
+
+	def _remoteInvocationMobileCode(self, method, flags, *args):
+		# special trimmed-down version for mobile code methods (no locking etc)
+		body=pickle.dumps((self.URI.objectID,method,flags,args),Pyro.config.PYRO_PICKLE_FORMAT)
+		sock_sendmsg(self.conn.sock, self.createMsg(body), self.timeout)
+		ver,answer,pflags = self.receiveMsg(self.conn,1)
+		if answer is None:
+			raise ProtocolError('incorrect answer received')
+		return pickle.loads(answer)
 
 	def remoteInvocation(self, method, flags, *args):
+		try:
+			self.lock.acquire() # only 1 thread at a time may use this connection to call a remote method
+			return self._remoteInvocation(method, flags, *args)
+		finally:
+			self.lock.release()
+
+	def _remoteInvocation(self, method, flags, *args):
 		if 'conn' not in self.__dict__.keys():
 			Log.msg('PYROAdapter','no connection, trying to bind again')
 			if 'URI' in self.__dict__.keys():
@@ -400,12 +438,12 @@ class PYROAdapter:
 			else:
 				raise ProtocolError('trying to rebind, but was never bound before')
 		if method in self.onewayMethods:
-			flags |= constants.RIF_Oneway
+			flags |= Pyro.constants.RIF_Oneway
 		body=pickle.dumps((self.URI.objectID,method,flags,args),Pyro.config.PYRO_PICKLE_FORMAT)
 		sock_sendmsg(self.conn.sock, self.createMsg(body), self.timeout)
-		if flags & constants.RIF_Oneway:
+		if flags & Pyro.constants.RIF_Oneway:
 			return None		# no answer required, return immediately
-		ver,answer,pflags = self.receiveMsg(self.conn,1)
+		ver,answer,pflags = self.receiveMsg(self.conn,1)  # read the server's response, send no further replies
 		if answer is None:
 			raise ProtocolError('incorrect answer received')
 
@@ -417,16 +455,16 @@ class PYROAdapter:
 		else:
 			importer=None
 			try:
-				_remoteImportRLock.acquire()
+				imp.acquire_lock()
 				loaded = 0
 				# XXX maxtries here...
 				while not loaded:
 					# install a custom importer to intercept any extra needed modules
 					# when unpickling the answer just obtained from the server
-					_agentImportLock.acquire()
+					imp.acquire_lock()
 					importer = agent_import(__builtin__.__import__)
 					__builtin__.__import__ = importer
-					_agentImportLock.release()
+					imp.release_lock()
  
 					try:
 						answer = pickle.loads(answer)
@@ -441,7 +479,7 @@ class PYROAdapter:
 			finally:
 				if importer is not None:
 					__builtin__.__import__ = importer.orig_import
-				_remoteImportRLock.release()
+				imp.release_lock()
 
 		if isinstance(answer,PyroExceptionCapsule):
 			if isinstance(answer.excObj,_InternalNoModuleError):
@@ -479,9 +517,9 @@ class PYROAdapter:
 							except EnvironmentError:
 								pass
 					if bytecode:
-						self.remoteInvocation("remote_supply_code",0,mname, bytecode, self.conn.sock.getsockname())
+						self._remoteInvocationMobileCode("remote_supply_code",0,mname, bytecode, self.conn.sock.getsockname())
 						# retry the method invocation
-						return self.remoteInvocation(* (method, flags)+args)
+						return self._remoteInvocation(* (method, flags)+args)   # use the non-locking call
 					Log.error("PYROAdapter","cannot read module source code for module:", mname)
 					raise PyroError("cannot read module source code",mname)
 				finally:
@@ -499,26 +537,29 @@ class PYROAdapter:
 		if pflags&PFLG_XMLPICKLE_GNOSIS:
 			conn.pflags|=PFLG_XMLPICKLE_GNOSIS
 		if ver!=self.version:
-			Log.error('PYROAdapter','incompatible protocol version')
-			if noReply:
-				raise ProtocolError('incompatible protocol version')
-			else:
+			msg='incompatible protocol version'
+			Log.error('PYROAdapter',msg)
+			if not noReply:
 				# try to report error to client, but most likely the connection will terminate:
-				self.returnException(conn, ProtocolError('incompatible protocol version'))
-				return ver,None,pflags
+				self.returnException(conn, ProtocolError(msg))
+			raise ProtocolError(msg)
 		if hid!=self.headerID or hsiz!=self.headerSize:
-			Log.error('PYROAdapter','invalid header')
+			msg='invalid header'
+			Log.error('PYROAdapter',msg)
 			Log.error('PYROAdapter','INVALID HEADER DETAILS: ',conn,( hid, ver, hsiz, bsiz,pflags))
-			# try to report error to client, but most likely the connection will terminate:
-			self.returnException(conn, ProtocolError('invalid header'), shutdown=1)
-			return ver,None,pflags
+			if not noReply:
+				# try to report error to client, but most likely the connection will terminate:
+				self.returnException(conn, ProtocolError(msg), shutdown=1)
+			raise ProtocolError(msg)
 		body=sock_recvmsg(conn.sock, bsiz, self.timeout)
 		if pflags&PFLG_CHECKSUM:
 			if _has_compression:
 				if crc!=zlib.adler32(body):
-					Log.error('PYROAdapter','checksum error in body')
-					self.returnException(conn, ProtocolError('checksum error'))
-					return ver,None,pflags
+					msg='checksum error'
+					Log.error('PYROAdapter',msg)
+					if not noReply:
+						self.returnException(conn, ProtocolError(msg))
+					raise ProtocolError(msg)
 			else:
 				raise ProtocolError('cannot perform checksum')
 		if pflags&PFLG_COMPRESSED:
@@ -535,7 +576,7 @@ class PYROAdapter:
 			if Pyro.config.PYRO_XML_PICKLE=='gnosis':
 				return pickle.loads(body)
 			else:
-				return util.getXMLPickle('gnosis').loads(body)
+				return Pyro.util.getXMLPickle('gnosis').loads(body)
 		elif Pyro.config.PYRO_XML_PICKLE:
 			Log.error('PYROAdapter','xml pickle required, got other pickle')
 			raise ProtocolError('xml pickle required, got other pickle')
@@ -559,15 +600,16 @@ class PYROAdapter:
 			try:
 				# install a custom importer to intercept any extra needed modules
 				# when unpickling the request just obtained from the client
-				_agentImportLock.acquire()
+				imp.acquire_lock()
 				importer=agent_import(__builtin__.__import__)
 				__builtin__.__import__=importer
-				_agentImportLock.release()
 				req=self._unpickleRequest(pflags, body)
-				if type(req)!=type(()):
-					raise TypeError("REQUESTDATA ISN'T A TUPLE")
+				if type(req)!=tuple or len(req)!=4 or type(req[3])!=tuple:
+					# sanity check failed
+					raise ProtocolError("invalid request data format")
 			finally:
 				__builtin__.__import__=importer.orig_import
+				imp.release_lock()
 
 		except ImportError,x:
 			if Pyro.config.PYRO_MOBILE_CODE:
@@ -587,14 +629,14 @@ class PYROAdapter:
 
 		try:
 			# find the object in the implementation database of our daemon
-			o=daemon.implementations[req[0]]
+			o=daemon.getLocalObject(req[0])
 		except (KeyError, TypeError) ,x:
 			Log.warn('PYROAdapter','Invocation to unknown object ignored:',x)
 			self.returnException(conn, ProtocolError('unknown object ID'))
 			return
 		else:
 			# Do the invocation. We are already running in our own thread.
-			if req[2]&constants.RIF_Oneway and daemon.threaded:   # flags
+			if req[2]&Pyro.constants.RIF_Oneway and daemon.threaded:   # flags
 				# received a oneway call, run this in its own thread.
 				thread=Thread(target=self._handleInvocation2, args=(daemon,req,pflags,conn,o))
 				thread.setDaemon(1)   # thread must exit at program termination.
@@ -608,21 +650,21 @@ class PYROAdapter:
 			flags=req[2]
 			importer=None
 			if not Pyro.config.PYRO_MOBILE_CODE:
-				res = obj[0].Pyro_dyncall(req[1],flags,req[3])	# (method,flags,args)
+				res = obj.Pyro_dyncall(req[1],flags,req[3])	# (method,flags,args)
 			else:
 				try:
 					# install a custom importer to intercept any extra needed modules
 					# when executing the remote method. (using the data passed in by
 					# the client may trigger additional imports)
-					_agentImportLock.acquire()
+					imp.acquire_lock()
 					importer=agent_import(__builtin__.__import__)
 					__builtin__.__import__=importer
-					_agentImportLock.release()
-					res = obj[0].Pyro_dyncall(req[1],flags,req[3])	# (method,flags,args)
+					res = obj.Pyro_dyncall(req[1],flags,req[3])	# (method,flags,args)
 				finally:
 					__builtin__.__import__=importer.orig_import
+					imp.release_lock()
 
-			if flags&constants.RIF_Oneway:
+			if flags&Pyro.constants.RIF_Oneway:
 				return		# no result, return immediately
 			# reply the result to the caller
 			if pflags&PFLG_XMLPICKLE_GNOSIS:
@@ -630,7 +672,7 @@ class PYROAdapter:
 				if Pyro.config.PYRO_XML_PICKLE=='gnosis':
 					body=pickle.dumps(res,Pyro.config.PYRO_PICKLE_FORMAT)
 				else:
-					body=util.getXMLPickle('gnosis').dumps(res,Pyro.config.PYRO_PICKLE_FORMAT)
+					body=Pyro.util.getXMLPickle('gnosis').dumps(res,Pyro.config.PYRO_PICKLE_FORMAT)
 			else:
 				replyflags=0
 				body=pickle.dumps(res,Pyro.config.PYRO_PICKLE_FORMAT)
@@ -655,12 +697,14 @@ class PYROAdapter:
 				Log.error('PYROAdapter','code problem with incoming object: '+str(ix))
 				self.returnException(conn, NoModuleError(* ix.args))
 		except Exception:
-			daemon.handleError(conn)
+			# Handle the exception. Pass in if it was a oneway call,
+			# those calls don't need any response to be sent.
+			daemon.handleError(conn, bool(flags&Pyro.constants.RIF_Oneway))
 
 	def returnException(self, conn, exc, shutdown=1, args=None):
 		# return an encapsulated exception to the client
 		if conn.pflags&PFLG_XMLPICKLE_GNOSIS:
-			pic=util.getXMLPickle('gnosis')
+			pic=Pyro.util.getXMLPickle('gnosis')
 		else:
 			pic=pickle
 		try:
@@ -684,6 +728,7 @@ class PYROAdapter:
 					raise ValueError("Auth challenge must be exactly "+`self.AUTH_CHALLENGE_SIZE`+" bytes")
 				sock_sendmsg(conn.sock, self.createMsg(challenge),self.timeout)
 				ver,body,pflags = self.receiveMsg(conn)
+				# only process the message if it makes a bit of sense
 				if ver==self.version and body.startswith(self.connectMSG):
 					token=body[len(self.connectMSG):]
 					(ok,reasonCode) = tcpserver.newConnValidator.acceptIdentification(tcpserver,conn,token,challenge)
@@ -697,17 +742,18 @@ class PYROAdapter:
 				self.sendDeny(conn,reasonCode)
 			return 0	
 		except ProtocolError:
+			# ignore the message if it caused protocol errors
 			return 0
 
 # import wrapper class to help with importing remote modules
 class agent_import:
 	def __init__(self, orig_import):
 		self.orig_import=orig_import
-	def __call__(self,name, globals={},locals={},fromlist=None):
+	def __call__(self,name, globals={},locals={},fromlist=None, *rest):
 		# save the import details:
 		self.name=name		# note: this must be a str object
 		self.fromlist=fromlist
-		return self.orig_import(name,globals,locals,fromlist)
+		return self.orig_import(name,globals,locals,fromlist, *rest)
 
 
 #
@@ -737,9 +783,10 @@ class PYROSSLAdapter(PYROAdapter):
 			Log.error('PYROSSLAdapter','incompatible protocol in URI:',URI.protocol)
 			raise ProtocolError('incompatible protocol in URI')
 		try:
-			from M2Crypto import SSL
 			self.URI=URI.clone()
 			sock = SSL.Connection(self.ctx,socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+			if not Pyro.config.PYROSSL_POSTCONNCHECK:
+				sock.postConnectionCheck=None
 			sock.connect((URI.address, URI.port))
 			conn=TCPConnection(sock, sock.getpeername())
 			# receive the authentication challenge string, and use that to build the actual identification string.
@@ -754,7 +801,7 @@ class PYROSSLAdapter(PYROAdapter):
 					self.resolvePYROLOC_URI("PYROSSL") # updates self.URI
 			elif msg[:len(self.denyMSG)]==self.denyMSG:
 				try:
-					raise ConnectionDeniedError(constants.deniedReasons[int(msg[-1])])
+					raise ConnectionDeniedError(Pyro.constants.deniedReasons[int(msg[-1])])
 				except (KeyError,ValueError):
 					raise ConnectionDeniedError('invalid response')
 		except socket.error:
@@ -807,7 +854,7 @@ class DefaultConnValidator:
 	def acceptHost(self,daemon,connection):
 		if len(daemon.connections)>=Pyro.config.PYRO_MAXCONNECTIONS:
 			Log.msg('DefaultConnValidator','Too many open connections, closing',connection,'#conns=',len(daemon.connections))
-			return (0, constants.DENIED_SERVERTOOBUSY)
+			return (0, Pyro.constants.DENIED_SERVERTOOBUSY)
 		return (1,0)
 	def acceptIdentification(self, daemon, connection, token, challenge):
 		if "all" in self.allowedIDs:
@@ -816,7 +863,7 @@ class DefaultConnValidator:
 			if self.createAuthToken(authid, challenge, connection.addr, None, daemon) == token:
 				return (1,0)
 		Log.warn('DefaultConnValidator','connect authentication failed on conn ',connection)
-		return (0,constants.DENIED_SECURITY)
+		return (0,Pyro.constants.DENIED_SECURITY)
 	def createAuthToken(self, authid, challenge, peeraddr, URI, daemon):
 		# Called from both client and server, is used to be able to validate the token.
 		# client: URI & peeraddr provided, daemon is None
@@ -830,13 +877,13 @@ class DefaultConnValidator:
 		try:
 			pid=os.getpid()
 		except:
-			pid=id(self)	# XXX jython has no getpid()
+			pid=id(self)	# at least jython has no getpid()
 		string = '%s-%d-%.20f-%.20f' %(str(getIPAddress()), pid, time.time(), random.random())
-		return md5.new(string).digest()
+		return md5(string).digest()
 	def mungeIdent(self, ident):
 		# munge the identification string into something else that's
 		# not easily guessed or recognised, like the md5 hash:
-		return md5.new(ident).digest()
+		return md5(ident).digest()
 	def setAllowedIdentifications(self, ids):
 		if ids is not None:
 			if type(ids) in (types.TupleType, types.ListType):
@@ -860,7 +907,7 @@ class BasicSSLValidator(DefaultConnValidator):
 	def checkCertificate(self,cert):
 		# do something interesting with the cert here, in a subclass :)
 		if cert is None:
-			return (0,constants.DENIED_SECURITY)
+			return (0,Pyro.constants.DENIED_SECURITY)
 		return (1,0)
 
 
@@ -879,9 +926,6 @@ class TCPServer:
 		self.connections = []  # connection threads
 		self.initTLS=lambda tls: None  # default do-nothing func
 		try:
-			if os.name=='java':
-				raise NotImplementedError('Pyro server not yet supported on Jython') # XXX
-								
 			if prtcol=='PYROSSL':
 				try:
 					from M2Crypto import SSL
@@ -907,6 +951,8 @@ class TCPServer:
 			set_reuse_addr(self.sock)
 			self.sock.bind((host,port))
 			self.sock.listen(Pyro.config.PYRO_TCP_LISTEN_BACKLOG)
+			if self._ssl_server:
+				self.sock = SSL.Connection(self.ctx,self.sock)   # wrap server socket as SSL socket
 			# rest of members
 			self.threaded = threaded
 			self.mustShutdown=0  # global shutdown
@@ -1006,21 +1052,13 @@ class TCPServer:
 			# it was the server socket, new incoming connection
 			ins.remove(self.sock)
 			if self._ssl_server:
-				from M2Crypto import SSL
 				try:
 					csock, addr = self.sock.accept()
-					sslsock = SSL.Connection(self.ctx,csock)
-					sslsock.setup_addr(addr)
-					sslsock.setup_ssl()
-					sslsock.set_accept_state()
-					sslsock.accept_ssl()
+					#if not Pyro.config.PYROSSL_POSTCONNCHECK:
+					#	csock.postConnectionCheck=None
 				except SSL.SSLError,error:
-					if str(error) in('unexpected eof', 'http request', 'tlsv1 alert unknown ca', 'peer did not return a certificate'):
-						return
-					else:
-						raise
-				csock=sslsock
-
+					Log.warn('TCPServer','SSL error: '+str(error))
+					return
 			else:
 				csock, addr = self.sock.accept()
 
@@ -1059,21 +1097,13 @@ class TCPServer:
 		if self.sock in ins:
 			# it was the server socket, new incoming connection
 			if self._ssl_server:
-				from M2Crypto import SSL
 				try:
 					csock, addr = self.sock.accept()
-					sslsock = SSL.Connection(self.ctx,csock)
-					sslsock.setup_addr(addr)
-					sslsock.setup_ssl()
-					sslsock.set_accept_state()
-					sslsock.accept_ssl()
+					#if not Pyro.config.PYROSSL_POSTCONNCHECK:
+					#	csock.postConnectionCheck=None
 				except SSL.SSLError,error:
 					Log.warn('TCPServer','SSL error: '+str(error))
-					# print "SSL Error:",error
-					csock.close()
 					return
-				csock=sslsock
-
 			else:
 				csock, addr = self.sock.accept()
 
@@ -1107,7 +1137,7 @@ class TCPServer:
 
 	def getAdapter(self):
 		raise NotImplementedError,'must be overridden to return protocol adapter'
-	def handleError(self,conn):
+	def handleError(self,conn,onewaycall=False):
 		raise NotImplementedError,'must be overridden'
 
 	def getServerSockets(self):
@@ -1119,13 +1149,16 @@ class TCPServer:
 # Sometimes safe_select() raises an select.error exception with the EINTR
 # errno flag set, which basically tells the caller to try again later.
 # This safe_select method works around this case and indeed just tries again.
+_selectfunction=select.select
+if os.name=="java":
+	from select import cpython_compatible_select as _selectfunction
 def safe_select(r,w,e,timeout=None):
 	while True:
 		try:
 			if timeout is not None:
-				return select.select(r,w,e,timeout)
+				return _selectfunction(r,w,e,timeout)
 			else:
-				return select.select(r,w,e)
+				return _selectfunction(r,w,e)
 		except select.error,x:
 			if x.args[0] == errno.EINTR or (hasattr(errno, 'WSAEINTR') and x.args[0] == errno.WSAEINTR):
 				pass

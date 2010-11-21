@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 import sys, os, time
 
 sys.path.insert(0,os.pardir)	# to find testserver.py
@@ -18,8 +18,8 @@ def _cpu_delay():
 		import cPickle
 		x=cPickle.dumps(range(100))
 	except:
-		import md5
-		x=md5.new(str(range(100))).digest()
+		import hmac
+		x=hmac.new("somerandomthingie",str(range(100))).digest()
 
 def determinePeriod():
 	global _timeval

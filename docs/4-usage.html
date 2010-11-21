@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 4-usage.html,v 2.37.2.1 2007/04/30 14:25:56 irmen Exp $ -->
+<!-- $Id: 4-usage.html,v 2.37.2.6 2008/06/28 23:41:02 irmen Exp $ -->
 <head>
   <title>PYRO - Usage</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -19,7 +19,7 @@
   </table>
 <hr></div>
 
-  <h2><u>4. Pyro Usage</u></h2>
+  <h2>4. Pyro Usage</h2>
 
   <ul>
     <li><a href="#intro">Introduction</a></li>
@@ -108,11 +108,13 @@ command files have the '.cmd' extension. </p>
     <dt><code>pyro-nsc</code> &nbsp;&nbsp;(Name Server Control tool)</dt>
 
     <dd>
-      - Arguments: [-h host] [-p port] [-i identification] command [args...]<br>
+      - Arguments: [-h host] [-p port] [-c bcaddr] [-i identification] command [args...]<br>
       - Controls the Pyro Name Server. '-h host' specifies the host where the Name Server should be contacted. '-p
-      port' specifies a non-standard NS broadcast port to contact. With '-i identification' you can supply the
+      port' specifies a non-standard NS broadcast port to contact.
+      '-c bcaddr' allows you to override the broadcast address.
+       With '-i identification' you can supply the
       authentication passphrase that is used to connect to the Name Server. When it contains spaces, use quotes around
-      it. If the host is specified, it is the direct Pyro port instead. 'command' is one of the following:
+      it. 'command' is one of the following:
 
       <ul>
         <li>ping: just check if the NS is up and running.</li>
@@ -184,7 +186,7 @@ command files have the '.cmd' extension. </p>
   <h4>Initialization</h4>You should initialize Pyro before using it in your server program. This is done by calling
   <pre>
    Pyro.core.initServer()
-</pre>If you provide the optional argument <code>banner=0</code>, no banner is printed, otherwise a short message is
+</pre>If you provide the optional argument <code>banner=1</code>, a short version message is
 printed on the standard output. There is also a second optional argument <code>storageCheck</code>. By default it is 1
 and Pyro will check the availability of the <code>PYRO_STORAGE</code> directory. If you set it to 0, Pyro will not
 perform this check.
@@ -228,14 +230,17 @@ perform this check.
 
       <td>the socket number to use (defaults to the <code>PYRO_PORT</code> configuration item). Keep in mind that Pyro
       will pay attention to the <code>PYRO_PORT_RANGE</code> config item: if it cannot claim the socket on the given
-      port, it will try the next higher port, and so on, as long as <code>PYRO_PORT_RANGE</code> allows.</td>
+      port, it will try the next higher port, and so on, as long as <code>PYRO_PORT_RANGE</code> allows.
+      	Setting this to 0 lets the operating system choose a random port for you (you need to set <code>norange</code>
+      	to 1 or True as well, if you want this).</td>
     </tr>
 
     <tr valign="top">
       <td><code>norange</code></td>
 
       <td>whether or not to try a range of sockets, i.e. don't pay attention to the <code>PYRO_PORT_RANGE</code>
-      setting. (It's usually best leave this at the default value, 0)</td>
+      setting. (It's usually best leave this at the default value, 0)
+      You need to set this to 1 or True if you want to use the random port selection (when setting <code>port=0</code>).</td>
     </tr>
 
     <tr valign="top">
@@ -244,11 +249,12 @@ perform this check.
       <td>the hostname that the daemon will use when publishing URIs, in case of a firewall/NAT setup. See the Features
       chapter. Defaults to the value given to the <code>host</code> parameter.</td>
     </tr>
-  </table><br>
+  </table>
+  <p>
   The second line tells the daemon to use a certain Name Server (<code>ns</code> is a proxy for the NS, see the next
   paragraph how to get this proxy). It's possible to omit this call but the Daemon will no longer be able to register
   your objects with the NS. If you didn't register them yourself, it is impossible to find them. The daemon will log a
-  warning if it doesn't know your NS.
+warning if it doesn't know your NS.</p>
 
   <p>If your daemon is no longer referenced, it might be garbage collected (destroyed) by Python. Even if you connected
   Pyro objects to the daemon. So you have to make sure that you keep a reference to your daemon object at all time.
@@ -447,7 +453,7 @@ finally:
   <h4>Initialization</h4>You should initialize Pyro before using it in your client program. This is done by calling
   <pre>
    Pyro.core.initClient()
-</pre>If you provide the argument '0', no banner is printed, otherwise a short message is printed on the standard
+</pre>If you provide the argument 'banner=1', a short version message is printed on the standard
 output. In contrast to the server initialization (see above), this method does <em>not</em> check the availability of
 the <code>PYRO_STORAGE</code> directory. This means that you can run Pyro clients on a read-only system, as long as
 they don't have to write something (log!) to <code>PYRO_STORAGE</code>!

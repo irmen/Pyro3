@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-$Id: wxnsc.py,v 1.10.2.1 2007/05/07 18:56:26 irmen Exp $
+$Id: wxnsc.py,v 1.10.2.4 2008/06/01 09:45:35 irmen Exp $
 
 A wxPython gui to nsc (Pyro Name Server Control tool).
 This gui doesn't have as many features as the xnsc that ships with Pyro,
@@ -20,24 +20,17 @@ Usage (from the commandline):
 # for finding the nameserver host...
 > wxnsc.py
 
-# or specify the host...
-
-> wxnsc.py myhost
-
-# or specify the host and port.
-
-> wxnsc.py myhost 9091
-
 """
 
 __author__   = "Jan Finell"
-__date__     = "$Date: 2007/05/07 18:56:26 $"
-__revision__ = "$Revision: 1.10.2.1 $"
+__date__     = "$Date: 2008/06/01 09:45:35 $"
+__revision__ = "$Revision: 1.10.2.4 $"
 
 #
 # Standard modules
 #
 import os, sys, socket
+import traceback, cStringIO
 
 #
 # GUI modules
@@ -177,17 +170,19 @@ class wx_NSC(wx.Frame):
    """
    :Purpose: The main frame of the GUI.
    """
-   def __init__(self, nsHost, nsPort):
+   def __init__(self, nsHost, nsPort, bcAddr):
       """
       :Parameters:
          - `nsHost`: the name server host to connect to. This is the
                      name of the host or the ip.
          - `nsPort`: the name server port. By default the Pyro name
                      server port is 9090
+         - `bcAddr`: override for the broadcast address.
       """
       wx.Frame.__init__(self, None, -1, 'Pyro Name Server')
       self.nsHost           = nsHost
       self.nsPort           = nsPort
+      self.bcAddr           = bcAddr
       self.NS               = None
 
       self._build()
@@ -259,10 +254,10 @@ class wx_NSC(wx.Frame):
          if self.nsHost:
             self._log('connecting to Name Server (%s:%s)' % (self.nsHost,
                                                              self.nsPort))
-            self.NS = locator.getNS(self.nsHost, self.nsPort, trace=1)
+            self.NS = locator.getNS(self.nsHost, self.nsPort, trace=1, bcaddr=self.bcAddr)
          else:
             self._log('broadcasting to find Name Server')
-            self.NS = locator.getNS(None, None, trace = 1)            
+            self.NS = locator.getNS(None, None, trace = 1, bcaddr=self.bcAddr) 
             self.nsHost = self.NS.URI.address
             self.nsPort = self.NS.URI.port
          self.NS._setIdentification(ident)
@@ -286,6 +281,7 @@ class wx_NSC(wx.Frame):
       except:
          self.NS = None
          self._logError('Name Server not found!')
+
 
    def nsc_list_groups(self, ingroup):
       """
@@ -647,7 +643,6 @@ class wx_NSC(wx.Frame):
          self.NS = None
          self._log('Connection with Name Server lost', 'error')
          self.enable(False)  
-      import traceback, cStringIO
       buf = cStringIO.StringIO()
       traceback.print_exc(file = buf)
       self._log('%s:\n%s' % (line, buf.getvalue()), 'error')
@@ -897,21 +892,16 @@ def main(argv):
    """
    nsHost = os.getenv('PYRO_NS_HOSTNAME')
    nsPort = os.getenv('PYRO_NS_BC_PORT') or Pyro.config.PYRO_NS_PORT
+   bcAddr = Pyro.config.PYRO_NS_BC_ADDR
+   if bcAddr:
+      bcAddr=bcAddr.strip()
+   bcAddr=bcAddr or None
       
-   if len(argv) == 1:
-      nsHost = argv[0]
-   elif len(argv) == 2:
-      nsHost = argv[0]
-      nsPort = argv[1]
-   elif len(argv)>2:
-      print "Illegal number of arguments"
-      raise SystemExit(1)
-   
    class wx_NSCApp(wx.App):
       def OnInit(self):
          Pyro.core.initClient()
-         frame = wx_NSC(nsHost, nsPort)
-         frame.SetSize(wx.Size(630,450))
+         frame = wx_NSC(nsHost, nsPort, bcAddr)
+         frame.SetSize(wx.Size(630,500))
          frame.Show(True)
          return True
 

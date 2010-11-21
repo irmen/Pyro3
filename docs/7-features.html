@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 7-features.html,v 2.55 2007/02/11 13:56:41 irmen Exp $ -->
+<!-- $Id: 7-features.html,v 2.55.2.6 2008/07/07 16:19:46 irmen Exp $ -->
 <head>
   <title>PYRO - Features and Guidelines</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -19,7 +19,7 @@
   </table>
 <hr></div>
 
-  <h2><u>7. Features and Guidelines</u></h2>
+  <h2>7. Features and Guidelines</h2>
   This chapter discusses some of the more technical features of Pyro, that
   don't fit in elsewhere. Also it provides some guidelines you must follow when developing with Pyro.
 
@@ -248,48 +248,6 @@
   1, <em>will crash Pyro</em>. Please use
   <code>Pyro.util.supports_multithreading()</code> to test whether or not your system is able to use
   multithreading.</p>
-
-<h4>Sharing proxies between threads</h4>
-  <p>In a multithreading scenario, the following is very important: <strong><em>you cannot share Pyro proxy objects between
-threads</em></strong>. Pyro <em>will</em> throw an exception when it detects invalid usage of proxies
-between different threads.</p>
-<p>Lets describe this restriction in some more detail. The problem is that once a proxy is connected to
-	the server object, only one thread at a time can make use of the proxy's connection.
-This also means that as long as the proxy is not connected, you can freely use it between threads.
-As soon as you connect the proxy (by calling remote methods) the active thread claims ownership of the proxy.
-No other thread can use the proxy now.
-So, how do you pass proxies around different threads? Use one of the following rules:</p>
-<ul>
-	<li>Create a proxy and hand it to another thread before calling any remote method on it.</li>
-	<li>Let each thread resolve and obtain its own proxy object. That means, the only thing you share is the 
-	URI, and every thread does a lookup to get a proxy for that URI. It uses a connection for every thread, 
-	so it can be quite heavy on network resource usage.</li>
-	<li>Let each thread make a copy of a proxy for itself, by using <code>copy.copy(obj)</code>. (this avoids
-	the overhead of doing the lookup again for every thread, but it uses a connection for every thread, 
-	so it can be quite heavy on network resource usage.)</li>
-	<li>Release the proxy's connection by calling <code>_release()</code> on the proxy before handing it to another thread.
-		The proxy will be reconnected by the other thread. This can be slow if it occurs often,
-		and doesn't solve the problem of using a proxy simultaneously in multiple threads.</li>
-	<li>Manually transfer thread ownership by calling <code>_transferThread(newthread)</code> on the proxy. This is very
-		fast and avoids the need to release and reconnect, but it doesn't solve the
-		problem of using a proxy simultaneously in multiple threads. </li>
-	<li>Note: just using thread locks around remote calls does <em>not</em> work. You have to use one of the above as well.</li>
-</ul>		
-
-<h4>Threading issues in your Pyro objects (server/callback side)</h4>
-<p>Every remote method call is handled in a new thread. That means you have a problem when
-	you are holding a proxy inside your Pyro object, that you want to call. 
-(Unless the proxy arrived via a method parameter, see the paragraph &quot;Transferring proxies over remote calls&quot; below).	
-Probably the easiest thing to do is to just store the URI of the object you need to call,
-and resolve that into a new Proxy every time you need it. This is quite slow, however.
-Another solution might be to create a new copy of a given proxy everytime you need to call it.
-It is faster, but still has to create a new connection everytime.
-Perhaps the fastest, but ugliest, solution is to use a thread lock, transfer ownership
-to the current thread using <code>_transferThread()</code>, call the method, and release the thread lock.
-Yes, calling Pyro objects from within Pyro objects is not easy, but nothing can be done about it. 
-This thread safeness is needed to ensure error-free operation.
-But, maybe the next paragraph can help out in certain situations.
-</p>
 
   <h4>Concurrent method invocations, or perhaps not: <code>Pyro.core.SynchronizedObjBase</code></h4>Be aware that your
   Pyro objects can be accessed concurrently, i.e. method calls may occur simultaneously from different threads. It can
@@ -523,10 +481,6 @@ except Exception,x:
 <p>
   This function is safe to call on all exceptions, also normal (local) exceptions. See the &quot;simple&quot; and
 &quot;exceptions&quot; examples.</p>
-<p>Another thing Pyro does is to extend the exception's <code>args</code> with a string item &quot;This error occured remotely (Pyro). Remote traceback is available.&quot;
-	When an exception occurs and it is printed you will see this extra string argument to indicate
-	that it was a Pyro exception, and that you can get the remote traceback information from it using the method described above.
-</p>
 
   <h3><a name="daemon" id="daemon"></a>Remotely accessing the Daemon</h3>Usually you won't care a bit, but the Pyro
   Daemon that is running in each Pyro server program, is exposed by a Pyro object itself. That means that you can
@@ -650,9 +604,6 @@ obj.delegateTo(impl)
 ...
 </pre>and you then connect <code>obj</code> to the Daemon.
     </li>
-
-    <li>You <strong>cannot</strong> share proxy objects between different threads. Look elsewhere in this chapter for
-    	extensive documentation on this difficult subject.</li>
 
     <li>It is preferred to call <code>daemon.shutdown()</code> when your program exits. This will cleanly stop all
     threads that might still be running.</li>

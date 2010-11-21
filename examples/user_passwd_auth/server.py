@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 import Pyro.naming
 import Pyro.core
@@ -12,7 +12,7 @@ class testobject(Pyro.core.ObjBase):
 	def method(self,arg):
 		caller = self.getLocalStorage().caller   # TCPConnection of the caller
 		login = caller.authenticated   # set by the conn.validator
-		return "You are '%s' and you are allowed to connect." % login
+		return "You are '%s' and you were allowed to connect." % login
 
 
 Pyro.core.initServer()
@@ -26,8 +26,11 @@ daemon.setNewConnectionValidator( connvalidator.UserLoginConnValidator() )
 daemon.connect(testobject(),'authentication')
 
 print "---\nfor reference: the following users and passwords are recognised:"
-for (user,passwd) in connvalidator.EXAMPLE_ALLOWED_USERS.items():
-    print "user: %s \tpassword: %s" % (user,passwd)
+print "user: root     password: change_me"
+print "user: irmen    password: secret"
+print "user: guest    password: guest"
+print "(this table is printed for sake of example; the passwords"
+print "  are not stored in plain text but as md5 hashes)"
 print
 
 # enter the service loop.

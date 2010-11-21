@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: core.py,v 2.104.2.1 2007/04/30 14:45:53 irmen Exp $
+#	$Id: core.py,v 2.104.2.19 2008/08/19 14:30:38 irmen Exp $
 #	Pyro Core Library
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -9,19 +9,19 @@
 #############################################################################
 
 import sys, time, re, os, weakref
-import imp,marshal,new,socket
-import Pyro
-import util, protocol, constants
-from errors import *
+import imp, marshal, new, socket
+from pickle import PicklingError
+import Pyro.constants, Pyro.util, Pyro.protocol, Pyro.errors
+from Pyro.errors import *
 from types import UnboundMethodType, MethodType, BuiltinMethodType, TupleType, StringType, UnicodeType
-if util.supports_multithreading():
+if Pyro.util.supports_multithreading():
 	import threading
 
-Log=util.Log
+Log=Pyro.util.Log
 
 
 def _checkInit(pyrotype="client"):
-	if not getattr(Pyro.config, constants.CFGITEM_PYRO_INITIALIZED):
+	if not getattr(Pyro.config, Pyro.constants.CFGITEM_PYRO_INITIALIZED):
 		# If Pyro has not been initialized explicitly, do it automatically.
 		if pyrotype=="server":
 			initServer()
@@ -39,11 +39,9 @@ def _checkInit(pyrotype="client"):
 #
 #############################################################################
 
-_remoteImportLock=util.getLockObject()
-
 class ObjBase:
 	def __init__(self):
-		self.objectGUID=util.getGUID()
+		self.objectGUID=Pyro.util.getGUID()
 		self.delegate=None
 		self.lastUsed=time.time()		# for later reaping unused objects
 		if Pyro.config.PYRO_MOBILE_CODE:
@@ -86,14 +84,18 @@ class ObjBase:
 		self.lastUsed=time.time()
 		# find the method in this object, and call it with the supplied args.
 		keywords={}
-		if flags & constants.RIF_Keywords:
+		if flags & Pyro.constants.RIF_Keywords:
 			# reconstruct the varargs from a tuple like
 			#  (a,b,(va1,va2,va3...),{kw1:?,...})
 			keywords=args[-1]
 			args=args[:-1]
-		if flags & constants.RIF_Varargs:
+		if flags & Pyro.constants.RIF_Varargs:
 			# reconstruct the varargs from a tuple like (a,b,(va1,va2,va3...))
 			args=args[:-1]+args[-1]
+		if keywords and type(keywords.iterkeys().next()) is unicode and sys.platform!="cli":
+			# IronPython sends all strings as unicode, but apply() doesn't grok unicode keywords.
+			# So we need to rebuild the keywords dict with str keys... 
+			keywords = dict([(str(k),v) for k,v in keywords.iteritems()])
 		# If the method is part of ObjBase, never call the delegate object because
 		# that object doesn't implement that method. If you don't check this,
 		# remote attributes won't work with delegates for instance, because the
@@ -135,7 +137,7 @@ class ObjBase:
 		# XXX this is nasty code, and also duplicated in protocol.py _retrieveCode()
 		if Pyro.config.PYRO_MOBILE_CODE and self.codeValidator(name,module,sourceaddr):
 			try:
-				_remoteImportLock.acquire()   # threadsafe imports
+				imp.acquire_lock()   # threadsafe imports
 				if name in sys.modules and getattr(sys.modules[name],'_PYRO_bytecode',None):
 					# already have this module, don't import again
 					# we checked for the _PYRO_bytecode attribute because that is only
@@ -168,7 +170,7 @@ class ObjBase:
 				# store the bytecode for possible later reference if we need to pass it on
 				mod.__dict__['_PYRO_bytecode'] = module
 			finally:
-				_remoteImportLock.release()
+				imp.release_lock()
 		else:
 			Log.warn('ObjBase','attempt to supply code denied: ',name,'from',str(sourceaddr))
 			raise PyroError('attempt to supply code denied')
@@ -212,7 +214,7 @@ class ObjBase:
 class SynchronizedObjBase(ObjBase):
     def __init__(self):
         ObjBase.__init__(self)
-        self.synlock=util.getLockObject()
+        self.synlock=Pyro.util.getLockObject()
     def Pyro_dyncall(self, method, flags, args):
         self.synlock.acquire()  # synchronize method invocation
         try:
@@ -266,7 +268,7 @@ class PyroURI:
 				if Pyro.config.PYRO_DNS_URI:
 					self.address = host
 				else:
-					self.address=protocol.getIPAddress(host)
+					self.address=Pyro.protocol.getIPAddress(host)
 					if not self.address:
 						raise URIError('unknown host')
 				if port:
@@ -337,8 +339,8 @@ def processStringURI(URI):
 		hostname=x.group('hostname') or x.group('onlyhostname')
 		port=x.group('port')
 		name=x.group('name')
-		import naming
-		loc=naming.NameServerLocator()
+		import Pyro.naming
+		loc=Pyro.naming.NameServerLocator()
 		if port:
 			port=int(port)
 		NS=loc.getNS(host=hostname,port=port)
@@ -398,15 +400,13 @@ class DynamicProxy:
 		self.objectID = URI.objectID
 		# Delay adapter binding to enable transporting of proxies.
 		# We just create an adapter, and don't connect it...
-		self.adapter = protocol.getProtocolAdapter(self.URI.protocol)
-		if util.supports_multithreading():
-			self.ownerThreadId = id(threading.currentThread())
-		else:
-			self.ownerThreadId = None
+		self.adapter = Pyro.protocol.getProtocolAdapter(self.URI.protocol)
 		# ---- don't forget to register local vars with DynamicProxyWithAttrs, see below
 	def __del__(self):
-		if 'adapter' in self.__dict__.keys():
+		try:
 			self.adapter.release(nolog=1)
+		except (AttributeError, RuntimeError):
+			pass
 	def _setIdentification(self, ident):
 		self.adapter.setIdentification(ident)
 	def _setNewConnectionValidator(self, validator):
@@ -418,18 +418,16 @@ class DynamicProxy:
 	def _setTimeout(self,timeout):
 		self.adapter.setTimeout(timeout)
 	def _transferThread(self, newOwnerThread=None):
-		if newOwnerThread is not None:
-			self.ownerThreadId = id(newOwnerThread)
-		elif util.supports_multithreading():
-			self.ownerThreadId = id(threading.currentThread())
-		else:
-			self.ownerThreadId = None
+		pass # dummy function to retain API compatibility with Pyro 3.7
 	def _release(self):
 		if self.adapter:
 			self.adapter.release()
 	def __copy__(self):			# create copy of current proxy object
 		proxyCopy = DynamicProxy(self.URI)
 		proxyCopy.adapter.setIdentification(self.adapter.getIdentification(), munge=False)   # copy identification info
+		proxyCopy._setTimeout(self.adapter.timeout)
+		proxyCopy._setOneway(self.adapter.onewayMethods)
+		proxyCopy._setNewConnectionValidator(self.adapter.getNewConnectionValidator())
 		return proxyCopy
 	def __deepcopy__(self, arg):
 		raise PyroError("cannot deepcopy a proxy")
@@ -459,31 +457,25 @@ class DynamicProxy:
 		return None
 
 	def _invokePYRO(self, name, vargs, kargs):
-		if util.supports_multithreading():
-			if self.adapter.connected() and id(threading.currentThread()) != self.ownerThreadId:
-				raise PyroError("not allowed to share proxy among multiple threads")
 		if not self.adapter.connected():
-			self._transferThread(None)  # we claim the proxy because we connect it first
 			self.adapter.bindToURI(self.URI)
-		return self.adapter.remoteInvocation(name, constants.RIF_VarargsAndKeywords, vargs, kargs)
+		return self.adapter.remoteInvocation(name, Pyro.constants.RIF_VarargsAndKeywords, vargs, kargs)
 
 	# Pickling support, otherwise pickle uses __getattr__:
 	def __getstate__(self):
 		# for pickling, return a non-connected copy of ourselves:
 		copy = self.__copy__()
 		copy._release()
-		del copy.ownerThreadId    # will be reset on the receiving side
 		return copy.__dict__
 	def __setstate__(self, args):
 		# this appears to be necessary otherwise pickle won't work
 		self.__dict__=args
-		self._transferThread()		# claim the proxy for ourselves
 
 	
 class DynamicProxyWithAttrs(DynamicProxy):
 	def __init__(self, URI):
 		# first set the list of 'local' attrs for __setattr__
-		self.__dict__["_local_attrs"] = ("_local_attrs","URI", "objectID", "adapter", "ownerThreadId", "_name", "_attr_cache")
+		self.__dict__["_local_attrs"] = ("_local_attrs","URI", "objectID", "adapter", "_name", "_attr_cache")
 		self._attr_cache = {}
 		DynamicProxy.__init__(self, URI)
 	def _r_ga(self, attr, value=0):
@@ -510,7 +502,7 @@ class DynamicProxyWithAttrs(DynamicProxy):
 				raise AttributeError('not an attribute')
 	def __getattr__(self, attr):
 		# allows it to be safely pickled
-		if attr not in ("__getinitargs__", "__hash__","__eq__","__ne__"):
+		if attr not in ("__getinitargs__", "__hash__","__eq__","__ne__") and attr not in self.__dict__["_local_attrs"]:
 			result=self.findattr(attr)
 			if result==1: # method
 				return _RemoteMethod(self._invokePYRO, attr)
@@ -539,39 +531,50 @@ class DaemonServant(ObjBase):
 		return self.daemon.ResolvePYROLOC(name)
 		
 # The daemon itself:
-class Daemon(protocol.TCPServer, ObjBase):
+class Daemon(Pyro.protocol.TCPServer, ObjBase):
 	def __init__(self,prtcol='PYRO',host=None,port=0,norange=0,publishhost=None):
 		ObjBase.__init__(self)
 		self.NameServer = None
 		self.connections=[]
 		_checkInit("server") # init required
-		self.setGUID(constants.INTERNAL_DAEMON_GUID)
-		self.implementations={constants.INTERNAL_DAEMON_GUID:(DaemonServant(self),'__PYRO_Internal_Daemon')}
+		self.setGUID(Pyro.constants.INTERNAL_DAEMON_GUID)
+		self.implementations={Pyro.constants.INTERNAL_DAEMON_GUID:(DaemonServant(self),'__PYRO_Internal_Daemon')}
 		self.persistentConnectedObjs=[] # guids
 		self.transientsCleanupAge=0
-		self.transientsMutex=util.getLockObject()
-		self.nscallMutex=util.getLockObject()
+		self.transientsMutex=Pyro.util.getLockObject()
+		self.nscallMutex=Pyro.util.getLockObject()
 		if host is None:
 			host=Pyro.config.PYRO_HOST
 		if publishhost is None:
 			publishhost=Pyro.config.PYRO_PUBLISHHOST
-		if port:
-			self.port = port
-		else:
-			self.port = Pyro.config.PYRO_PORT
+
+		# Determine range scanning or random port allocation
 		if norange:
-			portrange=1
+			# Fixed or random port allocation
+			# If port is zero, OS will randomly assign, otherwise,
+			# attempt to use the provided port value
+			self.port = port
+			portrange = 1
 		else:
+			# Scanning port allocation
+			if port:
+				self.port = port
+			else:
+				self.port = Pyro.config.PYRO_PORT
 			portrange=Pyro.config.PYRO_PORT_RANGE
+
 		if not publishhost:
 			publishhost=host
 		errormsg=''
 		for i in range(portrange):
 			try:
-				protocol.TCPServer.__init__(self, self.port, host, Pyro.config.PYRO_MULTITHREADED,prtcol)
-				self.hostname = publishhost or protocol.getHostname()
+				Pyro.protocol.TCPServer.__init__(self, self.port, host, Pyro.config.PYRO_MULTITHREADED,prtcol)
+				if not self.port:
+					# If we bound to an OS provided port, report it
+					self.port = self.sock.getsockname()[1]
+				self.hostname = publishhost or Pyro.protocol.getHostname()
 				self.protocol = prtcol
-				self.adapter = protocol.getProtocolAdapter(prtcol)
+				self.adapter = Pyro.protocol.getProtocolAdapter(prtcol)
 				self.validateHostnameAndIP()  # ignore any result message... it's in the log already.
 				return
 			except ProtocolError,msg:
@@ -582,16 +585,16 @@ class Daemon(protocol.TCPServer, ObjBase):
 	
 	# to be called to stop all connections and shut down.
 	def shutdown(self, disconnect=False):
-		protocol.TCPServer.shutdown(self)
+		Pyro.protocol.TCPServer.shutdown(self)
 		if disconnect:
 			self.__disconnectObjects()
 	def __disconnectObjects(self):
 		# server shutting down, unregister all known objects in the NS
-		if self.NameServer and constants:
+		if self.NameServer and Pyro and Pyro.constants:
 			self.nscallMutex.acquire()
 			try:
-				if constants.INTERNAL_DAEMON_GUID in self.implementations:
-					del self.implementations[constants.INTERNAL_DAEMON_GUID]
+				if Pyro.constants.INTERNAL_DAEMON_GUID in self.implementations:
+					del self.implementations[Pyro.constants.INTERNAL_DAEMON_GUID]
 				if self.implementations:
 					Log.warn('Daemon','Shutting down but there are still',len(self.implementations),'objects connected - disconnecting them')
 				for guid in self.implementations.keys():
@@ -608,14 +611,15 @@ class Daemon(protocol.TCPServer, ObjBase):
 
 	def __del__(self):
 		self.__disconnectObjects() # unregister objects
-		if hasattr(self,'adapter'):
+		try:
 			del self.adapter
-		if protocol: protocol.TCPServer.__del__(self)
+			Pyro.protocol.TCPServer.__del__(self)
+		except (AttributeError, RuntimeError):
+			pass
 
 	def __str__(self):
 		return '<Pyro Daemon on '+self.hostname+':'+str(self.port)+'>'
 	def __getstate__(self):
-		from pickle import PicklingError
 		raise PicklingError('no access to the daemon')
 
 	def validateHostnameAndIP(self):
@@ -626,7 +630,7 @@ class Daemon(protocol.TCPServer, ObjBase):
 			Log.error("Daemon","no hostname known")
 			raise socket.error("no hostname known for daemon")
 		if self.hostname!="localhost":
-			ip = protocol.getIPAddress(self.hostname)
+			ip = Pyro.protocol.getIPAddress(self.hostname)
 			if ip is None:
 				Log.error("Daemon","no IP address known")
 				raise socket.error("no IP address known for daemon")
@@ -756,7 +760,7 @@ class Daemon(protocol.TCPServer, ObjBase):
 		finally:
 			self.transientsMutex.release()
 
-	def handleError(self,conn):			# overridden from TCPServer
+	def handleError(self,conn,onewaycall=False):			# overridden from TCPServer
 		try:
 			(exc_type, exc_value, exc_trb) = sys.exc_info()
 			if exc_type==ProtocolError:
@@ -766,7 +770,7 @@ class Daemon(protocol.TCPServer, ObjBase):
 				Log.error('Daemon','Due to network error: shutting down connection with',conn)
 				self.removeConnection(conn)
 			else:
-				exclist = util.formatTraceback(exc_type, exc_value, exc_trb)
+				exclist = Pyro.util.formatTraceback(exc_type, exc_value, exc_trb)
 				out =''.join(exclist)
 				Log.warn('Daemon', 'Exception during processing of request from',
 					conn,' type',exc_type,
@@ -776,13 +780,16 @@ class Daemon(protocol.TCPServer, ObjBase):
 					sys.stdout.flush()
 					# This is a capsuled exception, used with callback objects.
 					# That means we are actually the daemon on the client.
-					# Return the error to server and raise exception locally once more.
+					# Return the error to the other side and raise exception locally once more.
 					# (with a normal exception, it is not raised locally again!)
-					self.adapter.returnException(conn,exc_value.excObj,0,exclist) # don't shutdown
+					# only send the exception object if it's not a oneway call.
+					if not onewaycall:
+						self.adapter.returnException(conn,exc_value.excObj,0,exclist) # don't shutdown
 					exc_value.raiseEx()
 				else:
-					# normal exception
-					self.adapter.returnException(conn,exc_value,0,exclist) # don't shutdown connection
+					# normal exception, only return exception object if it's not a oneway call
+					if not onewaycall:
+						self.adapter.returnException(conn,exc_value,0,exclist) # don't shutdown connection
 
 		finally:
 			# clean up circular references to traceback info to allow proper GC
@@ -791,6 +798,13 @@ class Daemon(protocol.TCPServer, ObjBase):
 	def getAdapter(self):
 		# overridden from TCPServer
 		return self.adapter
+
+	def getLocalObject(self, guid):
+		# return a local object registered with the given guid
+		return self.implementations[guid][0]
+	def getLocalObjectForProxy(self, proxy):
+		# return a local object registered with the guid to which the given proxy points
+		return self.implementations[proxy.objectID][0]
 
 	def ResolvePYROLOC(self, name):
 		# this gets called from the protocol adapter when
@@ -820,7 +834,7 @@ def _initGeneric_pre():
 	if Pyro.config.PYRO_TRACELEVEL == 0: return
 	try:
 		out='\n'+'-'*60+' NEW SESSION\n'+time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))+ \
-			'   Pyro Initializing, version '+constants.VERSION+'\n'
+			'   Pyro Initializing, version '+Pyro.constants.VERSION+'\n'
 		Log.raw(out)
 	except IOError,e:
 		sys.stderr.write('PYRO: Can\'t write the tracefile '+Pyro.config.PYRO_LOGFILE+'\n'+str(e))
@@ -842,7 +856,7 @@ def _initGeneric_post():
 	_init_generic_done=1	
 
 
-def initClient(banner=1):
+def initClient(banner=0):
 	global _init_client_done
 	if _init_client_done: return
 	_initGeneric_pre()
@@ -850,10 +864,10 @@ def initClient(banner=1):
 	Pyro.config.finalizeConfig_Client()
 	_initGeneric_post()
 	if banner:
-		print 'Pyro Client Initialized. Using Pyro V'+constants.VERSION
+		print 'Pyro Client Initialized. Using Pyro V'+Pyro.constants.VERSION
 	_init_client_done=1
 	
-def initServer(banner=1, storageCheck=1):
+def initServer(banner=0, storageCheck=1):
 	global _init_server_done
 	if _init_server_done: return
 	_initGeneric_pre()
@@ -861,6 +875,6 @@ def initServer(banner=1, storageCheck=1):
 	Pyro.config.finalizeConfig_Server(storageCheck=storageCheck)
 	_initGeneric_post()
 	if banner:
-		print 'Pyro Server Initialized. Using Pyro V'+constants.VERSION
+		print 'Pyro Server Initialized. Using Pyro V'+Pyro.constants.VERSION
 	_init_server_done=1
 

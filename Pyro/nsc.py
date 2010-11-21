@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: nsc.py,v 2.19 2006/11/20 18:21:39 irmen Exp $
+#	$Id: nsc.py,v 2.19.2.5 2008/06/24 21:38:33 irmen Exp $
 #	Pyro Name Server Control Tool
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -8,17 +8,18 @@
 #
 #############################################################################
 
+import Pyro.constants
+import Pyro.util
+import Pyro.core
+import Pyro.errors
 from naming import NameServerLocator
 from errors import NamingError, ConnectionDeniedError, PyroError
-import Pyro.constants
-import core
 from protocol import getHostname
 
 class PyroNSControl:
 	def args(self, args):
-		import Pyro.util
 		self.Args = Pyro.util.ArgParser()
-		self.Args.parse(args,'h:p:i:')
+		self.Args.parse(args,'h:p:c:i:')
 		self.Args.printIgnored()
 		if self.Args.args:
 			cmd = self.Args.args[0]
@@ -28,6 +29,7 @@ class PyroNSControl:
 
 	def connect(self, sysCmd=None):
 		host = self.Args.getOpt('h',None)
+		bcaddr = self.Args.getOpt('c',None)
 		port = int(self.Args.getOpt('p', 0))
 		ident = self.Args.getOpt('i',None)
 		if port==0:
@@ -35,11 +37,11 @@ class PyroNSControl:
 
 		locator = NameServerLocator(identification=ident)
 		if not sysCmd:
-			self.NS = locator.getNS(host,port,1)
+			self.NS = locator.getNS(host,port,1,bcaddr=bcaddr)
 			print 'NS is at',self.NS.URI.address,'('+(getHostname(self.NS.URI.address) or '??')+') port',self.NS.URI.port
 			self.NS._setIdentification(ident)
 		else:
-			result = locator.sendSysCommand(sysCmd,host,port,1)
+			result = locator.sendSysCommand(sysCmd,host,port,1,bcaddr=bcaddr)
 			print 'Result from system command',sysCmd,':',result
 
 	def handleError(self, msg, exc):
@@ -105,7 +107,7 @@ class PyroNSControl:
 		self.connect()
 		try:
 			self.NS.register(self.Args.args[0],self.Args.args[1])
-			uri=core.PyroURI(self.Args.args[1])
+			uri=Pyro.core.PyroURI(self.Args.args[1])
 			print 'registered',self.Args.args[0],' --> ',uri
 		except NamingError,x:
 			self.handleError('Error from NS',x)
@@ -174,11 +176,12 @@ class PyroNSControl:
 
 def usage():
 	print 'PyroNS control program - usage is as follows;'
-	print '>> nsc [-h host] [-p port] [-i identification] command [args...]'
+	print '>> nsc [-h host] [-p port] [-c bcaddr] [-i identification] command [args...]'
 	print 'where command is one of: ping, list, listall, resolve, register, remove, creategroup, deletegroup, showmeta, setmeta, resync, shutdown'
 	print '      host is the host where the NS should be contacted'
 	print '      port is the non-standard Pyro NS broadcast port'
 	print '           (if host is specified, it is the Pyro port instead)'
+	print '      bcaddr allows you to override the broadcast address'
 	print '      identification is the authentication ID to connect to the server'
 	print '      args... depend on the command.'
 	raise SystemExit

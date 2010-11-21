@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: util.py,v 2.52 2007/03/04 01:45:49 irmen Exp $
+#	$Id: util.py,v 2.52.2.5 2008/05/17 09:56:01 irmen Exp $
 #	Pyro Utilities
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -10,7 +10,8 @@
 
 import os, sys, traceback
 import time, random, linecache
-import Pyro					# bring in Pyro.config
+import socket, binascii
+import Pyro.constants
 from Pyro.util2 import *	# bring in 'missing' util functions
 
 
@@ -165,7 +166,7 @@ else:
 						pid=os.getpid()
 						pidinfo=" ["+str(os.getpid())
 					except:
-						pidinfo=" ["   # XXX jython has no getpid()
+						pidinfo=" ["   # at least jython has no getpid()
 					if supports_multithreading():
 						pidinfo+=":"+threading.currentThread().getName()
 					pidinfo+="] "	
@@ -303,12 +304,16 @@ _getGUID_counter=0		# extra safeguard against double numbers
 _getGUID_lock=getLockObject()
 
 if os.name=='java':
+	import java.rmi.dgc
 	def getGUID():
 		# Jython uses java's own ID routine used by RMI
-		import java.rmi.dgc
-		return java.rmi.dgc.VMID().toString().replace(':','-')
+		return java.rmi.dgc.VMID().toString().replace(':','-').replace('--','-')
+elif sys.platform=='cli':
+	import System
+	def getGUID():
+		# IronPython uses .NET guid call
+		return System.Guid.NewGuid().ToString()
 else:	
-	import socket, binascii
 	def getGUID():
 		# Generate readable GUID string.
 		# The GUID is constructed as follows: hexlified string of
@@ -317,12 +322,10 @@ else:
 		# The 128 bit number is returned as a string of 16 8-bits characters.
 		# For A: should use the machine's MAC ethernet address, but there is no
 		# portable way to get it... use the IP address + 2 bytes process id.
-	
-		import Pyro.protocol
-		ip=Pyro.protocol.getIPAddress()
-		if ip:
+		try:
+			ip=socket.gethostbyname(socket.gethostname())
 			networkAddrStr=binascii.hexlify(socket.inet_aton(ip))+"%04x" % os.getpid()
-		else:
+		except socket.error:
 			# can't get IP address... use another value, like our Python id() and PID
 			Log.warn('getGUID','Can\'t get IP address')
 			try:
@@ -425,7 +428,6 @@ def getXMLPickle(impl=None):
 
 # Pyro traceback printing
 def getPyroTraceback(exc_obj):
-	import constants
 	def formatRemoteTraceback(remote_tb_lines) :
 		result=[]
 		result.append(" +--- This exception occured remotely (Pyro) - Remote traceback:")
@@ -440,7 +442,7 @@ def getPyroTraceback(exc_obj):
 		return result
 	try:
 		exc_type, exc_value, exc_trb=sys.exc_info()
-		remote_tb=getattr(exc_obj,constants.TRACEBACK_ATTRIBUTE,None)
+		remote_tb=getattr(exc_obj,Pyro.constants.TRACEBACK_ATTRIBUTE,None)
 		local_tb=formatTraceback(exc_type, exc_value, exc_trb)
 		if remote_tb:
 			remote_tb=formatRemoteTraceback(remote_tb)

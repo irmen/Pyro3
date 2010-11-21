@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 1-intro.html,v 2.27.2.1 2007/04/30 14:25:56 irmen Exp $ -->
+<!-- $Id: 1-intro.html,v 2.27.2.5 2008/06/28 23:41:01 irmen Exp $ -->
 <head>
   <title>PYRO - Introduction</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -20,7 +20,7 @@
 <hr></div>
   <!-- ******************* INTRODUCTION ******************** -->
 
-  <h2><u>1. Introduction</u></h2>Thank you for choosing the often regarded number one Remote Method Invocation package
+  <h2>1. Introduction</h2>Thank you for choosing the often regarded number one Remote Method Invocation package
   for Python!
 <p>
  Pyro is short for PYthon Remote Objects. It is an advanced and powerful 
@@ -55,7 +55,7 @@ But Pyro is <strong>small</strong>, <strong>simple</strong>,
 
 <p><strong>Features</strong></p>
     <ul>
-      <li>Written in 100% pure Python. It is small, simple and extremely portable - it runs everywhere Python runs and TCP/IP networking is available. Partial support for Jython. Minimum Python version required is 2.1.x, though the latest Python version is recommended.</li>
+      <li>Written in 100% pure Python. It is small, simple and extremely portable - it runs everywhere Python runs and TCP/IP networking is available.</li>
       <li>Naming Service which keeps record of the location of objects. The location of the NS can be discovered by a broadcast mechanism, and various other ways, if your network doesn't support broadcasting. NS has option to keep its naming database persistent (on disk) so that it survives shutdowns. </li>
       <li>High-level Event Service with topic channels.</li>
       <li> Mobile objects. Clients and servers can pass objects around - even when the server has never known them before. Pyro will then automatically transfer the needed Python bytecode.</li>
@@ -103,15 +103,10 @@ But Pyro is <strong>small</strong>, <strong>simple</strong>,
 
   <ul>
     <li>This version of Pyro needs at least Python 2.3. However, it is strongly recommended to use the latest Python
-    version available (at the time of writing 2.5). You may be able to run it on older Python versions (2.1 or 2.2) but
-    it has not been tested on those ancient versions. If it doesn't work, try a recent Python first before reporting a
-    problem. Thank you.</li>
+    version available (at the time of writing 2.5).</li>
 
     <li>You will have to use the same major Python version everywhere to make sure the data format is compatible (if
     you are using the default builtin pickle protocol)</li>
-
-    <li>There is some compatibility with Jython, but no servers are possible, and problems may occur due to Jython
-    bugs.</li>
 
     <li>Because basic Pyro does not depend on any third party libraries or extension modules, it runs wherever Python
     is available, however, the command line utility scripts are designed for Windows(NT) and Unix sh. You might
@@ -139,17 +134,10 @@ But Pyro is <strong>small</strong>, <strong>simple</strong>,
   <p><strong>Related technology</strong></p>
 
   <ul>
-    <li>Java Remote Method Invocation (<a href="http://java.sun.com/products/jdk/rmi/index.html">RMI</a>)</li>
-
-    <li>Common Object Request Broker Architecture (<a href=
-    "http://www.omg.org/gettingstarted/corbafaq.htm">CORBA</a>)</li>
-
-    <li><a href="http://www.fnorb.org/">Fnorb</a> - a CORBA implementation in Python</li>
+    <li>Java Remote Method Invocation (<a href="http://java.sun.com/javase/technologies/core/basic/rmi/index.jsp">RMI</a>)</li>
+    <li>Common Object Request Broker Architecture (<a href="http://www.omg.org/gettingstarted/corbafaq.htm">CORBA</a>)</li>
     <li><a href="http://omniorb.sourceforge.net/">OmniORB</a> - a CORBA implementation with Python bindings</li>
-
-    <li>The remoting code included in <a href="http://profigure.sourceforge.net">Profigure</a> by Tom Cocagne</li>
-
-    <li><a href="http://twistedmatrix.com/projects/core/spread">Twisted Spread</a>, part of Twisted.</li>
+    <li><a href="http://pybuild.sourceforge.net/pyinvoke.html">PyInvoke</a> and <a href="http://rpyc.wikispaces.com/">RPyC</a> - remote method calls in Python</li>
   </ul>
 
   <p><strong>Thanks</strong></p>

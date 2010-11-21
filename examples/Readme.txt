@@ -32,6 +32,7 @@ naming            - shows naming functions
 NS_sec_plugins    - shows the connection validator plugin feature of the NS
 noNS              - how to use Pyro without a Name Server (not recommended)
 oneway            - shows how oneway calls work in the background
+proxysharing      - shows the sharing of proxies over different threads
 quickstart        - shows the use of the Pyro.ext.remote module which makes using Pyro extremely easy, and a 'pyrorun' script which makes it even easier (no more server code needed!)
 quickstart-noNS   - like "quickstart" but doesn't use the Name Server
 simple            - a simple generic test

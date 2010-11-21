@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 #
 #	Notice: this client doesn't use the base testclient.py code

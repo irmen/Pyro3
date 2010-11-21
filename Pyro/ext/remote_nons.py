@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: remote_nons.py,v 1.5 2005/01/22 01:05:44 irmen Exp $
+#	$Id: remote_nons.py,v 1.5.2.1 2008/06/26 21:19:52 irmen Exp $
 #	simple Pyro connection module, without requiring Pyro's NameServer
 #	(adapted from John Wiegley's remote.py)
 #
@@ -84,8 +84,8 @@ def interrupt(*args):
 	abort = true
 
 if hasattr(signal,'SIGINT'): signal.signal(signal.SIGINT, interrupt)
-if hasattr(signal,'SIGHUP'): signal.signal(signal.SIGHUP, interrupt)
-if hasattr(signal,'SIGQUIT'): signal.signal(signal.SIGQUIT, interrupt)
+#if hasattr(signal,'SIGHUP'): signal.signal(signal.SIGHUP, interrupt)
+#if hasattr(signal,'SIGQUIT'): signal.signal(signal.SIGQUIT, interrupt)
 
 def handle_requests(wait_time = None, callback = None):
     global abort

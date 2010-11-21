@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 #  this is exactly the same server code as "bounce_server.py"
 #  but this one uses "bouncer2" as Pyro object.

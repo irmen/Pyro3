@@ -1,11 +1,11 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 import Pyro.core
 import Pyro.errors
 import Queue
 import random
 from workitem import Workitem
 
-NUMBER_OF_ITEMS = 20
+NUMBER_OF_ITEMS = 40
 Pyro.core.initClient()
 
 numbers = {}
@@ -22,7 +22,7 @@ def main():
 	dispatcher = Pyro.core.getProxyForURI("PYRONAME://:Distributed2.dispatcher")
 	print "placing work items into dispatcher queue."
 	for i in range(NUMBER_OF_ITEMS):
-		number=random.randint(100, 39999)
+		number=random.randint(3211, 5000)*random.randint(177,3000)*37
 		numbers[number] = None
 		item = Workitem(i+1, number)
 		dispatcher.putWork(item)

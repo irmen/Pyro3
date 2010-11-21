@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 import sys
 from Pyro.ext import remote
@@ -14,5 +14,5 @@ print 'Providing local object as "quickstart"...'
 remote.provide_local_object(object.myObject(), 'quickstart')
 
 print 'Waiting for requests.'
-sys.exit(remote.handle_requests())
+sys.exit(remote.handle_requests(wait_time=2))
 

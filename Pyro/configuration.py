@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: configuration.py,v 2.32.2.1 2007/04/30 14:46:05 irmen Exp $
+#	$Id: configuration.py,v 2.32.2.9 2008/07/07 16:19:46 irmen Exp $
 #	Sets up Pyro's configuration (Pyro.config).
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -12,7 +12,8 @@
 
 # Initialize Pyro Configuration.
 
-import re, os, random
+import re, os, random, tempfile
+import Pyro.errors
 from Pyro.errors import PyroError
 import Pyro.constants
 import Pyro.util2				# not util because of cyclic dependency
@@ -35,9 +36,11 @@ _defaults= {
 	'PYRO_PORT_RANGE':		100,
 	'PYRO_NS_HOSTNAME':		None,
 	'PYRO_NS_PORT':			9090,	# tcp
+	'PYRO_NS_BC_ADDR':		None,
 	'PYRO_NS_BC_PORT':		9090,	# udp
 	'PYRO_NS2_HOSTNAME':	None,
 	'PYRO_NS2_PORT':		9091,	# tcp
+	'PYRO_NS2_BC_ADDR':		None,
 	'PYRO_NS2_BC_PORT':		9091,	# udp
 	'PYRO_NS_URIFILE':		'$STORAGE/Pyro_NS_URI', # (abs)
 	'PYRO_NS_DEFAULTGROUP': ':Default',
@@ -68,6 +71,7 @@ _defaults= {
 	'PYROSSL_CA_CERT':		'ca.pem',
 	'PYROSSL_SERVER_CERT':	'server.pem',
 	'PYROSSL_CLIENT_CERT':	'client.pem',
+	'PYROSSL_POSTCONNCHECK': 1
 }
 
 # ---------------------- END OF DEFAULT CONFIGURATION VARIABLES -----
@@ -111,15 +115,21 @@ class Config:
 			if not os.path.isdir(self.PYRO_STORAGE):
 				raise IOError('PYRO_STORAGE is not a directory ['+self.PYRO_STORAGE+']')
 				
-			tstfile=os.path.join(self.PYRO_STORAGE,'_pyro_'+str(random.random())+".tmp")
 			try:
-				f=open(tstfile,'w')
+				if os.name=='java':
+					# jython doesn't have suitable TemporaryFile implementation (lacks dir param)
+					javatestfile=os.path.join(self.PYRO_STORAGE,'_pyro_'+str(random.random())+".tmp")
+					f=open(javatestfile,"w")
+				else:
+					# use tempfile to safely create a unique temporary file even on multi-cpu nodes
+					f=tempfile.TemporaryFile(dir=self.PYRO_STORAGE, suffix='.tmp', prefix='_pyro_')
 			except Exception,x:
 				print x
 				raise IOError('no write access to PYRO_STORAGE ['+self.PYRO_STORAGE+']')
 			else:
-				f.close() # some environments (jython) require explicit close
-				os.remove(tstfile)
+				f.close()
+				if os.name=='java':
+					os.remove(javatestfile)
 
 #	def __getattr__(self,name):
 #		# add smart code here to deal with other requested config items!

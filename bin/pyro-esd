@@ -1,8 +1,8 @@
-#!/bin/env python
+#!/usr/bin/env python
 
 #############################################################################
 #  
-#	$Id: pyro-esd,v 1.2.2.1 2007/04/30 14:25:56 irmen Exp $
+#	$Id: pyro-esd,v 1.2.2.2 2008/05/05 00:13:03 irmen Exp $
 #	Pyro Event Server Unix Daemon
 #	Author: Jeff Bauer  (jbauer@rubic.com)
 #	This software is released under the MIT software license.

@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: Server.py,v 2.37 2007/03/04 01:45:50 irmen Exp $
+#	$Id: Server.py,v 2.37.2.5 2008/08/19 14:30:38 irmen Exp $
 #	Event Service daemon and server classes
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -8,11 +8,11 @@
 #
 #############################################################################
 
-import time, types, re, sys, traceback
+import time, types, re, sys, traceback, os
 import Pyro.core, Pyro.naming, Pyro.util, Pyro.constants
 from Pyro.errors import *
 import Queue
-from threading import Thread, currentThread
+from threading import Thread
 
 Log=Pyro.util.Log
 
@@ -32,8 +32,6 @@ class Subscriber(Thread):
 	def __init__(self, remote):
 		Thread.__init__(self)
 		self.remote=remote
-		# transfer control to the current thread
-		self.remote._transferThread(self)
 		# set the callback method to ONEWAY mode:
 		self.remote._setOneway("event")
 		self.queue=Queue.Queue(Pyro.config.PYRO_ES_QUEUESIZE)
@@ -46,7 +44,7 @@ class Subscriber(Thread):
 				except ProtocolError,x:
 					break
 			else:
-				break # twas no Event, so exit
+				break # it was no Event, so exit
 		# this reads all pending items from the queue so that any
 		# tasks that are blocked on the queue can continue.
 		(queue, self.queue) = (self.queue, None)
@@ -176,16 +174,18 @@ class EventServiceStarter:
 		self.identification=identification
 		self.started = Pyro.util.getEventObject()
 	def start(self, *args, **kwargs):			# see _start for allowed arguments
-		self._start( startloop=1, *args, **kwargs )
+		kwargs["startloop"]=1
+		self._start(*args, **kwargs )
 	def initialize(self, *args, **kwargs):		# see _start for allowed arguments
-		self._start( startloop=0, *args, **kwargs )
+		kwargs["startloop"]=0
+		self._start( *args, **kwargs )
 	def getServerSockets(self):
 		return self.daemon.getServerSockets()
 	def waitUntilStarted(self,timeout=None):
 		self.started.wait(timeout)
 		return self.started.isSet()
-	def _start(self,hostname='',port=None,startloop=1,useNameServer=1):
-		daemon = Pyro.core.Daemon(host=hostname,port=port)
+	def _start(self,hostname='',port=None,startloop=1,useNameServer=1,norange=0):
+		daemon = Pyro.core.Daemon(host=hostname,port=port,norange=norange)
 		if self.identification:
 			daemon.setAllowedIdentifications([self.identification])
 			print 'Requiring connection authentication.'
@@ -224,9 +224,10 @@ class EventServiceStarter:
 		if startloop:
 			Log.msg('ES daemon','This is the Pyro Event Server.')
 			
-			# I use a timeout here otherwise you can't break gracefully on Windoze
 			try:
-				daemon.setTimeout(20)  # XXX fixed timeout
+				if os.name!="java":
+					# I use a timeout here otherwise you can't break gracefully on Windows
+					daemon.setTimeout(20)
 				daemon.requestLoop(lambda s=self: s.running)
 			except KeyboardInterrupt:
 				Log.warn('ES daemon','shutdown on user break signal')
@@ -251,7 +252,8 @@ class EventServiceStarter:
 			# no loop, store the required objects for getServerSockets()
 			self.daemon=daemon
 			self.es=es
-			daemon.setTimeout(20)  # XXX fixed timeout
+			if os.name!="java":
+				daemon.setTimeout(20)  # XXX fixed timeout
 
 	def mustContinueRunning(self):
 		return self.running
@@ -282,7 +284,7 @@ def start(argv):
 	Args.parse(argv,'hn:p:i:')
 	if Args.hasOpt('h'):
 		print 'Usage: es [-h] [-n hostname] [-p port] [-i identification]'
-		print '  where -p = ES server port'
+		print '  where -p = ES server port (0 for auto)'
 		print '        -n = non-default hostname to bind on'
 		print '        -i = the required authentication ID for ES clients,'
 		print '             also used to connect to other Pyro services'
@@ -293,11 +295,11 @@ def start(argv):
 	ident = Args.getOpt('i',None)
 	if port:
 		port=int(port)
+	norange=(port==0)
 	Args.printIgnored()
 	if Args.args:
 		print 'Ignored arguments:',' '.join(Args.args)
 
 	print '*** Pyro Event Server ***'
 	starter=EventServiceStarter(identification=ident)
-	starter.start(hostname,port)
-
+	starter.start(hostname,port,norange=norange)

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 import sys, time
 import Pyro.naming, Pyro.core
 from Pyro.protocol import getHostname
@@ -28,5 +28,5 @@ while 1:
 	except Pyro.errors.ConnectionClosedError,x:     # or possibly even ProtocolError
 		print 'Connection lost. REBINDING...'
 		print '(restart the server now)'
-		obj.adapter.rebindURI(tries=10)
+		obj.adapter.rebindURI()
 

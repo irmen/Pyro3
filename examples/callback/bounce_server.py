@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 import Pyro.naming
 import Pyro.core
 from Pyro.errors import NamingError

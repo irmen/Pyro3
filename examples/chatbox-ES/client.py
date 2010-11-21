@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 from Pyro.EventService.Clients import Publisher, Subscriber
 from server import CHAT_SERVER_NAME

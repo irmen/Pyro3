@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 import sys, os
 
 sys.path.insert(0,os.pardir)	# to find testserver.py

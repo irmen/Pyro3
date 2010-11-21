@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 import Pyro.core
 import Pyro.errors
 import Queue

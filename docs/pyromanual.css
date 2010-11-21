@@ -1,9 +1,9 @@
 html {
- background-color: #ddb;
+ background-color: #e8e8d0;
 }
 
 body {
- background-color: #ffd;
+ background-color: #fffff0;
  color: black;
  font-family: Tahoma,"Bitstream Vera Sans",sans-serif;
  font-size: 10pt;
@@ -16,7 +16,8 @@ body {
 h1,h2,h3,h4,h5,h6,h7 {
  font-family: "Trebuchet MS",Tahoma,"Bitstream Vera Sans",sans-serif;
  color: #446;
- background-color: #eec;
+ background-color: #f0f0d0;
+ text-decoration: underline;
 }
 
 a {
@@ -57,5 +58,5 @@ table.noborder th,table.noborder tr,table.noborder td {
 }
 
 tt,code {
- font-family: "Bitstream Vera Sans Mono", mono;
+ font-family: "Bitstream Vera Sans Mono",monospace;
 }

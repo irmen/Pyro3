@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 from Pyro.EventService.Clients import Subscriber
 from Server import symbols

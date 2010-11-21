@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 12-changes.html,v 2.119.2.4 2007/05/07 19:02:10 irmen Exp $ -->
+<!-- $Id: 12-changes.html,v 2.119.2.10 2008/10/05 00:18:39 irmen Exp $ -->
 <head>
   <title>PYRO - Change Log</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -18,407 +18,11 @@
   </table>
 <hr></div>
 
-  <h2><u>12. Pyro Change Log</u></h2>
+  <h2>12. Pyro Change Log</h2>
   (most recent entries <a href="#latest">at the end</a>)
 
-  <p>Pyro versions before 3.0 can be found in the <a href="12-changes-archive.html">archive</a>.</p>
+  <p>Pyro versions before 3.5 can be found in the <a href="12-changes-archive.html">archive</a>.</p>
 
-  <h3>Pyro 3.0</h3>
-
-  <ul>
-    <li>Major new version! Not compatible with older versions!</li>
-
-    <li>Pyro is now under the MIT software license. This license is much easier and less restrictive
-        than the previous (GNU LGPL). Please read the file &quot;LICENSE&quot;!</li>
-
-    <li>Major speedup, up to <em>twice</em> as fast as before! (Thanks to new threading code) This makes Pyro in
-    multithreaded mode as fast as singlethreaded mode :-)</li>
-
-    <li>Removed last traces of sockets in <code>core.py</code>. It only works with the more abstract
-    <em>connection</em> objects.</li>
-
-    <li>Added SSL support (based on a patch by Holger Br&uuml;ckner, thanks!). Requires <em>M2Crypto</em> module.</li>
-
-    <li>Simplified objectID encoding, now uses hexlified guids everywhere. No more converting from/to binary
-    strings.</li>
-
-    <li>Changed threading in protocol.py: Pyro used to hang when bad clients connected but didn't write their full
-    message on the socket. Now Pyro splits off a new thread <em>directly</em>, as soon as it detected a new connection
-    or request.</li>
-
-    <li>Pyro no longer spawns a new thread for each request. Instead, it spawns a single thread for each
-    <em>connection</em>, and hands control to that thread. The thread processes requests sequentially, and dies when
-    the connection closes. This causes a major speedup when processing lots of small requests.</li>
-
-    <li>Fixed some obscure potential socket/threading bugs and made protocol version mismatch handling slightly
-    better.</li>
-
-    <li>Connection denied reasons added to constants.py</li>
-
-    <li>Fixed cpu-bound server in multithreading example</li>
-
-    <li>Implemented XML pickling support using Gnosis_Utils' xml pickle, PYRO_XML_PICKLE config item to select it.
-    Server automatically answers in correct pickle format.</li>
-
-    <li>No longer dumps config twice when program uses both init client and init server.</li>
-
-    <li>Fixed some cyclic references. Object-daemon reference is now a weak reference if available (Python 2.1+).
-    Daemon/tcpserver now appears to clean up nicely.</li>
-
-    <li>Added some extra cleanup methods to nicely close socket connections.</li>
-
-    <li>Authenticated connection validation. You can now require the Pyro client to give a valid authentication
-        ID (password) while connecting. Control this using the improved connection validator. Not used
-        by default, so old code still works without authentication. See the &quot;NS_sec_plugins&quot; example.</li>
-
-    <li>Configurable timeouts on sending and receiving of messages. Due to changed connection procedure, this also
-    works for new connections. So Pyro can now also timeout when a new client just connects and blocks without sending
-    anything (the port is not occupied forever).</li>
-
-    <li>Added a new chapter about security to the manual.</li>
-
-    <li>The Daemon is no longer <em>directly</em> remotely accessible. Instead, there is now a DaemonServant object
-    with a limited interface that is the actual Pyro object and that calls the daemon.</li>
-
-    <li>PyroURI objects have two new methods to directly get a proxy from an URI object: <code>getProxy</code> and
-    <code>getAttrProxy</code>.</li>
-
-    <li>Proxies can now be 'passivated' if they are not needed for a while (they release their network connection)
-    <code>proxy._release()</code></li>
-
-    <li>Transient server objects can be automatically cleaned up after a specified period of inactivity.
-    <code>daemon.setTransientsCleanupAge(timeout)</code> Also added this to the Bank2 example, so have a look
-    there.</li>
-
-    <li>Mobile agents can now import other modules that don't already exist on the server! (But only from within the
-    agent class methods, not from within the defining module scope) They will also be loaded from the client, if the
-    codeValidator allows this.</li>
-
-    <li>Special base class for callback objects; <code>CallbackObjBase</code>. It will raise local exceptions also, not
-    only silently passing them back to the server.</li>
-
-    <li>Can now create <code>PyroURI</code> instances from PYROLOC: and PYRONAME: uris. The instance will be the actual
-    URI, after performing the lookup. Not very useful actually, because we used to do the equivalent
-    <code>proxy=Pyro.core.getProxyForURI('PYRONAME://.......')</code> Now you can also do
-    <code>proxy=Pyro.core.PyroURI('PYRONAME://.......').getProxy()</code></li>
-
-    <li>Added two minimalist examples in the manual, to show how easy Pyro is :-)</li>
-
-    <li>Name Server, Logger and listdir are now thread-safe (oops, they weren't before).</li>
-
-    <li>Event Server no longer requires threads, checks if it is already running, and has new '-i' command line option
-    to specify the required authentication passphrase.</li>
-
-    <li>Name Server checks at startup if it is not already running in the network segment. Unless you use the new '-m'
-    command line option, it refuses to start if another NS is detected.</li>
-
-    <li>Name Server has new '-i' command line option to specify the required authentication passphrase.</li>
-
-    <li>setup.py script can now be run unattended (for automated installs) by editing setup.cfg</li>
-
-    <li>Added stresstest example (stresses the Name Server and the Event Server). Good for stability check.</li>
-
-    <li>Pyro objects can now access Thread Local Storage by calling <code>self.getLocalStorage()</code>. This is an
-    empty class to store your stuff into. It has one attribute, <code>caller</code>, that is the TCPConnection of the
-    calling object.</li>
-
-    <li>Renamed &quot;Mobile Agent&quot; to &quot;Mobile Object&quot; where appropriate. Mobile Agents are
-        a special kind of Agent, and an Agent is a very special piece of software, and most mobile code
-        that we're talking about isn't an agent.</li>
-
-    <li>Added process ID and thread name info to logging messages.</li>
-
-    <li>Fixed setup script, creation of RPM should now work (python setup.py bdist_rpm).</li>
-
-    <li>Added &quot;circle&quot; example to show circular calling patterns.</li>
-
-    <li>Added &quot;quickstart-noNS&quot; example, like the &quot;quickstart&quot; example but this one doesn't
-        use the NS.</li>
-
-    <li>Improved &quot;callback&quot; example and documentation about Callbacks.</li>
-
-    <li>Promoted <code>remote.py</code> and <code>remote_nons.py</code> (from the &quot;quickstart[-noNS]&quot;
-        examples) into the Pyro library: there is a new package <code>Pyro.ext</code> that contains them.
-        They still have to be documented in this manual though.</li>
-
-    <li><code>PyroURI</code> objects are now correctly hashable, so you can use them as keys in dictionaries. The
-    uniqueness is determined by the string representation of the oject.</li>
-
-    <li>Documented the fact that <code>MyObject.attribute.subattribute</code> won't work in some cases, and extended
-    the attributes example a bit.</li>
-
-    <li>Fixed problem with deleting DynamicProxy in case of invalid URI.</li>
-
-    <li>More troubleshooting tips added.</li>
-
-    <li>Documented deadlock with object conversation problem (in Features chapter).</li>
-
-    <li>When mobile code is not enabled, the remote invocation doesn't use the import wrapper class (5% speed
-    improvement)</li>
-
-    <li>Fixed shell scripts to allow quoted arguments such as: ns -i &quot;the id string&quot;</li>
-
-    <li>URI parsing is stricter (could get in loop with certain invalid URI strings)</li>
-  </ul>
-
-  <h3><a>Pyro 3.1</a></h3>
-
-  <ul>
-    <li>Finally fixed the Event Server crash problem with the &quot;stresstest&quot; example; the ES now uses
-        worker threads and Queues per subscriber.</li>
-
-    <li>Two new config items for the ES: <code>PYRO_ES_QUEUESIZE</code> and <code>PYRO_ES_BLOCKQUEUE</code>.</li>
-
-    <li>Small fix in installation docs about where to put the module files.</li>
-
-    <li>Documented the fact that proxies can be pickled when not connected, and added _release method to
-    NameServerProxy.</li>
-
-    <li>Documented the serious 'local object' issue with nested attribute access, in the Features chapter.</li>
-
-    <li>Support added for PyXML's xml-pickler. Config item <code>PYRO_XML_PICKLE</code> changed: now chooses what
-    implementation is wanted.</li>
-
-    <li>Docs now contain links where referred to other parts of the docs. Various other documentation fixes.</li>
-
-    <li>ns script now has '-v' option to enable verbose output. Normal output is slightly more compact.</li>
-
-    <li>Proxy objects are now automatically pickleable, no need to call <code>_release()</code> first.</li>
-
-    <li>New <code>SynchronizedObjBase</code> base class which provides threadsafe method calls (every method call is
-    synchronized on the object).</li>
-
-    <li>Fixes for <code>CallbackObjBase</code> error reporting, added another callback example for this.</li>
-
-    <li><code>CallbackObjBase</code> is better documented.</li>
-  </ul>
-
-  <h3><a>Pyro 3.2</a></h3>
-
-  <ul>
-    <li>Big improvements in the mobile code department, thanks to Ulrich Eck:
-
-      <ul>
-        <li>2-way mobile code now possible! Client can transparantly download missing code from the server, no longer
-        only upload it to the server!</li>
-
-        <li>CodeValidators now work for both up- and downloaded code.</li>
-
-        <li>Remote code downloading from server is also recursive. <em>watch out! there are no sanity checks
-        yet.</em></li>
-
-        <li>downloaded modules no longer overwrite existing modules</li>
-
-        <li>Updated the &quot;agent2&quot; shopping example to use 2-way mobile code.</li>
-      </ul>
-    </li>
-
-    <li>Big improvements in the connection validation logic, thanks to Luis Caamano and Scott Leerssen: The connection
-    validation logic has been condensed in a single class (<code>DefaultConnValidator</code>). It is now much more
-    flexible. By providing a specialized ConnValidator object you can now completely control the logic that Pyro uses
-    on both client-side and server-side to authenticate new client connections. The change is backwards-compatible and
-    the default implementation still uses the md5 hashing of identification phrases for authentication.</li>
-
-    <li>Added a WXPython GUI name server control utility: wxnsc.py, and a batch file wxnsc. Thanks to Jan Finell for
-    this nice GUI tool with a tree view of the namespace.</li>
-
-    <li>Fixed some path issues (mac) in the setup.py script.</li>
-
-    <li>Fixed some Python 2.1 incompatibilities that had crept in (foo in dict instead of foo in dict.keys())</li>
-
-    <li>NS broadcast server now binds on '' on Windows. '&lt;broadcast&gt;' doesn't work on Windows (???)</li>
-
-    <li>Disconnecting objects from a Daemon no longer crashes when no NS is used.</li>
-
-    <li>Scripts changed to pass correct sys.argv arguments to actual Python modules. Ugly '-c' argument removal code is
-    gone.</li>
-
-    <li>Daemon now tests if your hostname is valid and doesn't resolve to the loopback address 127.0.0.1 (which is
-    often invalid). A warning message is logged in that case. NS and ES also print the message on the screen at
-    startup. The test is done in the <code>validateHostnameAndIP</code> method of the Daemon.</li>
-
-    <li>Name Server now also accepts non-absolute names and does the expansion itself, if needed. This enables
-    simplified access to the NS trough other means than the default static proxy obtained from the locator. (suggested
-    by Luis P Caamano).</li>
-
-    <li>Replaced to-be-deprecated <code>apply</code> with <code>func(*args)</code> syntax. Small speed increase
-    too.</li>
-
-    <li>NS no longer logs error when detecting duplicate NS.</li>
-
-    <li>Added Windows NT Services to Pyro (run NS / ES as NT service). Including batch files <code>nssvc.bat</code> and
-    <code>essvc.bat</code> to install/remove them.</li>
-
-    <li>Added Unix daemons to Pyro (run NS / ES as initd daemon). Including batch files <code>nsd</code> and
-    <code>esd</code> to run them from init scripts.</li>
-
-    <li>Relocated Event Server chapter in the manual after the Name Server.</li>
-
-    <li>Fixed race condition in dir check in configuration.py</li>
-
-    <li>Fixed race condition in _grimReaper in core.py</li>
-
-    <li>Fixed mobile code load/compile issue on windows. Pyro now supplies .pyo, .pyc, .py in that order. On Windows,
-    Python can't compile downloaded .py files if they have CR LF in them... :-(</li>
-
-    <li>A few Jython compatibility improvements (GUID, config init).</li>
-
-    <li>Fixed maxclient example and ConnectionDeniedError for maxclients.</li>
-
-    <li>Thread Local Storage has been improved (docs + added initTLS in Daemon)</li>
-  </ul>
-
-  <h3><a>Pyro 3.3</a></h3>
-
-  <ul>
-    <li>The NS tries &quot;&lt;broadcast&gt;&quot; first, this fails on some systems (windows) but it
-        now automatically tries &quot;&quot;
-    next (which should work).</li>
-
-    <li>Pyro now enforces you to initialize it correctly by calling <code>Pyro.core.initClient()</code> or
-    <code>initServer()</code>. Failure to do so will result in a <code>PyroError</code> very soon.</li>
-
-    <li>Name Server now has <em>Paired Mode</em>: run two NS instances that synchronize with eachother. Use for
-    fail-over.</li>
-
-    <li>nsc tools have new options to deal with new NS features (meta info, paired NS).</li>
-
-    <li>Name Server lookups automatically try to use the second NS if the first is unreachable.</li>
-
-    <li>NS proxy automatically tries to find the NS again (or its twin) when the connection has been lost.</li>
-
-    <li>Three new config items for the paired-NS mode: PYRO_NS2_* (see configuration chapter).</li>
-
-    <li>NS ports slightly changed: NS now uses 9090 TCP and 9090 UDP by default (was: 9090 TCP and 9091 UDP). The
-    second -paired- NS uses 9091 TCP and 9091 UDP.</li>
-
-    <li>You can now run clients on read-only systems: <code>PYRO_STORAGE</code> is no longer created and checked for
-    access when initializing <em>clients</em>. When you're initializing a <em>server</em>, it is still checked, unless
-    you explicitly disable the check by setting the new optional argument <code>storageCheck</code> to zero:
-    <code>Pyro.core.initServer(storageCheck=0)</code>.</li>
-
-    <li>More emphasis in the docs on the drawbacks of single-threading mode; you cannot use callbacks (Pyro will
-    freeze)</li>
-
-    <li>Rewrote the Event Server chapter in the manual.</li>
-
-    <li>objects connected using connectPersistent() are no longer removed from the NS when the Daemon is removed.</li>
-
-    <li>Fixed bug in pickling of DynamicProxy (it didn't work in the regular pickle module, and Jython). Also, you can
-    now do this: <code>proxy.method(proxy)</code> i.e. pass the active proxy to a methodcall on itself. That didn't
-    work before.</li>
-
-    <li>Passing DynamicProxies no longer cause the socket connection to be disconnected. So on a new method call on the
-    proxy that was passed, it is no longer needed to do a reconnect.</li>
-
-    <li>Detailed tracebacks (with dump of the local variable's values) can now be enabled by setting
-    <code>PYRO_DETAILED_TRACEBACK</code> to 1. Contributed by Richard Emslie.</li>
-
-    <li>Pyro now deals correctly with obsoleted string exceptions (raise &quot;blahblah&quot;). (jf Gosset)</li>
-
-    <li>Pyro exceptions now also automatically print their remote traceback info because the <code>__str__</code>
-    method has been customized in the <code>PyroExceptionCapsule</code>. No longer necessary to use exception handlers
-    and call <code>getPyroTraceback</code>. Contributed by jf Gosset. This is turned off by default, turn it on by
-    setting <code>PYRO_PRINT_REMOTE_TRACEBACK</code> to 1.</li>
-
-    <li>New-style logging using the <code>logging</code> module can be enabled with the use of two new config items
-    <code>PYRO_STDLOGGING</code> and <code>PYRO_STDLOGGING_CFGFILE</code>. The logging API is unchanged so old code
-    still runs. With an appropriate logging configuration file, it should be possible to log to any destination
-    (handler) that <code>logging</code> supports. This further enables clients (with logging!) on a read-only system:
-    just log to syslog or a socket, no need to write logfiles to the local disk.</li>
-
-    <li>&quot;simple&quot; example is now completely standalone instead of using testclient/server.</li>
-
-    <li>Objects in the Name Server can now have user-defined meta information attached to them.</li>
-
-    <li><code>nsc</code> (and the others) can show the meta information.</li>
-
-    <li>documented that the auth challenge string has to be exactly 16 bytes long, and Pyro now checks this.</li>
-
-    <li>New config item PYRO_TCP_LISTEN_BACKLOG that specifies the socket listen backlog size (used to be a measly 5,
-    is now default 200).</li>
-
-    <li>Reordered a bunch of try..finally regarding mutex locking/unlocking. Should better prevent possible
-    deadlocks.</li>
-
-    <li>Added missing <code>__copy__</code> method to <code>DynamicProxyWithAttrs</code>. (This bug caused the Bank2
-    example to crash, for instance).</li>
-
-    <li>Added stdin/stdout redirection to NUL for NT service in BasicNTService.py, thanks to David Rushby.</li>
-  </ul>
-
-  <h3><a>Pyro 3.4</a></h3>
-
-  <ul>
-    <li>Provided new SSL demo certificates, valid until january 2005. SSL example works again.</li>
-
-    <li>Implemented PYROLOCSSL:// protocol which works just like the existing PYROLOC:// protocol, but uses SSL
-    instead. (compare with PYROSSL:// versus PYRO://). This means you can now use Pyro in SSL mode without using the
-    Name Server to look up objects. (PYROLOC didn't work over SSL)</li>
-
-    <li>For Pyro clients, it is no longer required to explicitly call <code>Pyro.core.initClient()</code>. Pyro will do
-    this automatically if it is not yet initialised.</li>
-
-    <li>For Pyro servers, it is no longer required to explicitly call <code>Pyro.core.initServer()</code> if you are
-    creating a Pyro Daemon as a first action. If you have not yet initialised Pyro explicitly, Pyro will do this for
-    you when you create a Pyro Daemon. If you do other Pyro operations before that, this will obviously not work.</li>
-
-    <li>You can now configure command line arguments for the Windows NT services (essvc, nssvc) in the Registry. The
-    keys are: <code>HKLM\System\CurrentControlSet\Services\PyroES</code> and <code>...\PyroNS</code> . The value under
-    that key is: <code>PyroServiceArguments</code> (REG_SZ, it will be asked and created for you when doing a fresh
-    <code>nssvc remove</code> ... <code>nssvc install</code> ... <code>essvc remove</code> ... <code>essvc
-    install</code>.</li>
-
-    <li>The win NT services (nssvc, essvc) now write their logging to a logfile in the root of your system
-        drive (usually C:\), named &quot;Pyro_NS_svc.log&quot; and &quot;Pyro_ES_svc.log&quot; .</li>
-
-    <li>Documentation improvements about the Event Server.</li>
-
-    <li>Documentation improvements about Connection Validators.</li>
-
-    <li>Documentation added about nssvc and essvc NT-Service scripts for the NS and ES.</li>
-
-    <li>Documentation HTML cleanups.</li>
-
-    <li>Added a &quot;user_passwd_auth&quot; example that shows how to do connection validation (authentication)
-        based on username + password.</li>
-
-    <li>Added a &quot;filetransfer&quot; example that shows how to do file transfers using Pyro.</li>
-
-    <li>Added a &quot;rserve&quot; example that shows tuple-space like distributed communication. It can't
-        get simpler than this! Contributed by John Wiegley.</li>
-
-    <li>New wxnsc.py that deals with meta info.</li>
-
-    <li>Fixed daemonizer.py to <em>really</em> detach the daemon.</li>
-
-    <li>Fixed socket buffer/memory problem in protocol.py socket recv code, that seems to occur in certain
-    situations.</li>
-
-    <li>ResolvePYROLOC raises NamingError instead of KeyError if object name doesn't exist.</li>
-
-    <li>Deamon now always prints and logs a warning if bound on localhost/127.0.0.1.</li>
-
-    <li>Added a config item PYRO_SOCK_KEEPALIVE (default enabled) to control the SO_KEEPALIVE socket flag (to detect
-    broken connections).</li>
-
-    <li>Changed config item PYRO_BINARY_PICKLE into PYRO_PICKLE_FORMAT, which defaults to the best pickle format
-    available. (on Python 2.3+ this is pickle.HIGHEST_PROTOCOL (2), otherwise it's 1). This means that on Python 2.3+
-    the new pickle format is automatically used that is much smaller and faster for new-style classes.</li>
-
-    <li><code>Pyro.naming.NameServerStarter</code> now raises exceptions when it cannot start the name server.</li>
-
-    <li><code>Pyro.naming.NameServerStarter</code> and <code>Pyro.EventService.Server.EventServiceStarter</code> now
-    have a threadsafe way to wait until the server has been started: call the <code>waitUntilStarted(timeout)</code>
-    method. This is used in the updated &quot;AllInOne&quot; example.</li>
-
-    <li>Improved GUID generation a bit (threadsafe, tweaks).</li>
-
-    <li>Fixed some issues with Pyro.conf config file.</li>
-
-    <li>This is the last Pyro version that will work on Python 2.1, future versions require Python 2.2 or even
-    2.3.</li>
-  </ul>
 
   <h3>Pyro 3.5</h3>
 
@@ -557,7 +161,7 @@
 	<li>fixed ns thread issue in distributed-computing example</li>
   </ul>
 
-  <h3><a name="latest" id="latest"></a>Pyro 3.7</h3>
+  <h3>Pyro 3.7</h3>
    <ul>
     <li>Fixed typo for bdist_rpm target in setup.cfg</li>
     <li>Batch scripts have been renamed, all now start with a 'pyro-' prefix. This avoids name clashes. This was already done in the Debian package for instance.</li>
@@ -567,6 +171,51 @@
     <li>wxnsc updated to recent WxPython API, deprecation warning is gone</li>
    </ul>
         
+  <h3><a name="latest" id="latest"></a>Pyro 3.8.1</h3>
+   <ul>
+    <li>Pyro 3.8 is a bug-fix release that is almost completely backwards compatible with Pyro 3.7, apart from the exception change explained next.</li>
+    <li>Pyro now uses an internal mutex to control concurrent access to proxy objects. You can now freely use proxy objects in different threads. The thread ownership check has been removed, and the _transferThread() method is now a stub.</li>
+	<li>removed the exception args fiddling because it caused problems and depended on a deprecated python feature. If your code depends on the format of the exception.args field of an exception returned from a remote method call, you may need to change your code. This is the only thing that may not be backward compatible with code written for Pyro 3.7</li>
+	<li>improved Jython and IronPython compatibility. See wiki pages for detailed info on this.</li>
+	<li>fixed bug that self.daemon wasn't always set in NameServerStarter, causing problems with the shutdown and getServerSockets methods</li>
+	<li>fixed pickling/copying of proxies (they were forgetting attributes such as oneway methods)</li>
+	<li>version banner printing is now default off</li>
+	<li>improved errorhandling of some protocol errors in protocol.py</li>
+	<li>added request data format sanity check in protocol.py</li>
+	<li>fixed /bin/env to /usr/bin/env in a couple of files (following patches from Ubuntu package)</li>
+	<li>removed spaces in hashbang line in a lot of shellscripts (following patches from Ubuntu package)</li>
+	<li>handle EINTR status (interrupted system call) during socket reads (no more ConnectionClosedError)</li>
+	<li>fixed crash in initServer: storage dir checking issue with non-unique temporary files</li>
+	<li>fixed crash in errormessage in naming.py</li>
+	<li>changed relative imports to absolute imports</li>
+	<li>a few more changes to certain del methods to avoid crashes</li>
+	<li>nameserver locator no longer searches other hosts if an explicit hostname parameter is given</li>
+	<li>pyro-xnsc didn't correctly use the hostname from the name server location textfield</li>
+	<li>pyro-ns has new '-r' option to not look for existing name servers when starting a new one</li>
+	<li>prefers hashlib over md5 module because of deprecation in newer python versions</li>
+	<li>improved performance of supports_multithreading() and supports_compression() tests in util2.py (don't let them test the importing over and over again)</li>
+	<li>removed util.py's dependency on protocol.py to avoid possible import problem</li>
+	<li>fixed attrproxy getattr loop when deleting the object</li>
+    <li>new config item PYROSSL_POSTCONNCHECK that you can set to 0 (default=1) to circumvent connection/certificate validations when using SSL</li>
+	<li>user_passwd_auth example: passwords no longer stored as plaintext</li>
+	<li>fixed server side connection exception when error occurs during oneway call</li>
+	<li>The os can select a random port for your Pyro daemons if you set port=0 (and norange=1) when creating daemons. NS and ES also support this.</li>
+	<li>You can now override the broadcast address for the name server and the name server locator. Added config items for this as well. </li>
+    <li>fixed orig_import call in protocol.py for extra params that Python 2.6+ use</li>
+    <li>replaced custom locking objects by imp.acquire_lock() to obtain global import lock in mobile code import logic</li>
+    <li>autoreconnect example no longer stops after ten seconds</li>
+    <li>benchmark example got its iterations heavily increased because of faster machines</li>
+    <li>distributed-computing2 example generates easier numbers to avoid excessive computation times in factorization</li>
+    <li>configuration.py, core.py, nsc.py explicitly import Pyro.errors to avoid import errors during runtime hopefully</li>
+    <li>fixed monospace font in manual's print css; slightly tweaked the colors; headers are all underlined now (makes for easier reading when printed)</li>
+    <li>ext/remote.py and remote_nons.py don't eat all break signals anymore (only ctrl-c), quickstart examples use timeout on loop to be able to break them</li>
+    <li>cleanups in SSL code in protocol.py (receive loop, handleRequests, M2Crypto.threading.init() called if multithreading)</li>
+    <li>added 2 convenience methods to the daemon: getLocalObject(guid) and getLocalObjectForProxy(proxy)</li>
+    <li>AllInOne examples now use automatic port allocation to avoid port rebinding issues on certain os'es such as MacOS</li>
+    <li>3.8.1: fixed mobile code deadlock</li>
+    <li>3.8.1: better handling of socket.timeout errors</li>
+   </ul>
+
   <div class="nav">
   <hr>
   <table width="100%">
