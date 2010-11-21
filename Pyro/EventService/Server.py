@@ -4,7 +4,7 @@
 #	Event Service daemon and server classes
 #
 #	This is part of "Pyro" - Python Remote Objects
-#	which is (c) Irmen de Jong - irmen@users.sourceforge.net
+#	which is (c) Irmen de Jong - irmen@razorvine.net
 #
 #############################################################################
 

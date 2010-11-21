@@ -4,7 +4,7 @@
 #     simple Pyro connection module, originally written by John Wiegley
 #
 #     This is part of "Pyro" - Python Remote Objects
-#     which is (c) Irmen de Jong - irmen@users.sourceforge.net
+#     which is (c) Irmen de Jong - irmen@razorvine.net
 #
 #############################################################################
 

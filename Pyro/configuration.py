@@ -4,8 +4,7 @@
 #	Sets up Pyro's configuration (Pyro.config).
 #
 #	This is part of "Pyro" - Python Remote Objects
-#	Which is (c) Irmen de Jong - irmen@users.sourceforge.net
-#
+#	Which is (c) Irmen de Jong - irmen@razorvine.net
 #
 #############################################################################
 

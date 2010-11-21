@@ -6,7 +6,7 @@
 #   Bugfix for recent win32 builds: David Rushby; woodsplitter@rocketmail.com
 #
 #	This is part of "Pyro" - Python Remote Objects
-#	Which is (c) Irmen de Jong - irmen@users.sourceforge.net
+#	Which is (c) Irmen de Jong - irmen@razorvine.net
 #
 #############################################################################
 

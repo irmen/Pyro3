@@ -8,7 +8,7 @@ This gui doesn't have as many features as the xnsc that ships with Pyro,
 but it has some nice features that the xnsc doesn't have ;)
 
 'Pyro' - Python Remote Objects is
-(c) Irmen de Jong - irmen@users.sourceforge.net
+(c) Irmen de Jong - irmen@razorvine.net
 
 This file 'wxnsc.py' is
 (c) Jan Finell - finell@users.sourceforge.net

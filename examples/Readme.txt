@@ -60,6 +60,3 @@ code, they don't use the testserver/testclient.
 If your network doesn't support broadcast lookup of the Pyro NameServer,
 please set the environment variable PYRO_NS_HOSTNAME to the name of
 the host that the NS is running on.
-
-Irmen de Jong - irmen@users.sourceforge.net
-

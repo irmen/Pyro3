@@ -5,7 +5,7 @@
 #   Author: Syver Enstad  syver-en@online.no
 #
 #	This is part of "Pyro" - Python Remote Objects
-#	Which is (c) Irmen de Jong - irmen@users.sourceforge.net
+#	Which is (c) Irmen de Jong - irmen@razorvine.net
 #
 #############################################################################
 

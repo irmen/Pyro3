@@ -4,8 +4,7 @@
 #	Pyro file to make Pyro a package, and to set up configuration.
 #
 #	This is part of "Pyro" - Python Remote Objects
-#	Which is (c) Irmen de Jong - irmen@users.sourceforge.net
-#	More information on Pyro's website: http://pyro.sourceforge.net
+#	Which is (c) Irmen de Jong - irmen@razorvine.net
 #
 #	Note: to see what Pyro version this is, print Pyro.constants.VERSION
 #

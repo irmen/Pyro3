@@ -9,8 +9,10 @@
 #	Based on an earlier daemonize module by Jeffery Kunce
 #	Updated by Luis Camaano to double-fork-detach.
 #
+#   DEPRECATED. Don't use this in new code.
+#
 #	This is part of "Pyro" - Python Remote Objects
-#	which is (c) Irmen de Jong - irmen@users.sourceforge.net
+#	which is (c) Irmen de Jong - irmen@razorvine.net
 #
 #############################################################################
 
