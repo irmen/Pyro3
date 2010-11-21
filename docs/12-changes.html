@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 12-changes.html,v 2.119 2007/02/12 20:41:00 irmen Exp $ -->
+<!-- $Id: 12-changes.html,v 2.119.2.4 2007/05/07 19:02:10 irmen Exp $ -->
 <head>
   <title>PYRO - Change Log</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -517,7 +517,7 @@
         array, but can easily process other tasks (if they can be partitioned)</li>
   </ul>
 
-  <h3><a name="latest" id="latest"></a>Pyro 3.6</h3>
+  <h3>Pyro 3.6</h3>
 
   <ul>
     <li>a PyroException is now raised when Pyro detects you're sharing a connected proxy among different threads.</li>
@@ -556,6 +556,17 @@
 	<li>changed forking client in multithreading example to use threads instead, so it now works on Windows as well</li>
 	<li>fixed ns thread issue in distributed-computing example</li>
   </ul>
+
+  <h3><a name="latest" id="latest"></a>Pyro 3.7</h3>
+   <ul>
+    <li>Fixed typo for bdist_rpm target in setup.cfg</li>
+    <li>Batch scripts have been renamed, all now start with a 'pyro-' prefix. This avoids name clashes. This was already done in the Debian package for instance.</li>
+    <li>NS broadcast retry is now 1 (was 2) and timeout is now 0.75 (was 2)</li>
+    <li>Pyro.core.SynchronizedObjBase now correctly handles string exceptions (deprecated anyway)</li>
+    <li>the NS nt service won't respond to shutdown requests anymore</li>
+    <li>wxnsc updated to recent WxPython API, deprecation warning is gone</li>
+   </ul>
+        
   <div class="nav">
   <hr>
   <table width="100%">

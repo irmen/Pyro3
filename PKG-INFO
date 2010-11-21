@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: Pyro
-Version: 3.6
+Version: 3.7
 Summary: Powerful but easy-to-use distributed object middleware for Python
 Home-page: http://pyro.sourceforge.net/
 Author: Irmen de Jong

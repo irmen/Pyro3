@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: naming.py,v 2.64 2007/03/04 01:45:49 irmen Exp $
+#	$Id: naming.py,v 2.64.2.1 2007/04/30 14:46:05 irmen Exp $
 #	Pyro Name Server
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -1193,7 +1193,7 @@ class NameServerStarter:
 			retries=Pyro.config.PYRO_BC_RETRIES
 			timeout=Pyro.config.PYRO_BC_TIMEOUT
 			Pyro.config.PYRO_BC_RETRIES=1
-			Pyro.config.PYRO_BC_TIMEOUT=1
+			Pyro.config.PYRO_BC_TIMEOUT=0.7
 			try:
 				otherNSuri=NameServerLocator().detectNS()
 			except errors.PyroError:

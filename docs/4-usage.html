@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 4-usage.html,v 2.37 2007/02/11 13:56:41 irmen Exp $ -->
+<!-- $Id: 4-usage.html,v 2.37.2.1 2007/04/30 14:25:56 irmen Exp $ -->
 <head>
   <title>PYRO - Usage</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -78,36 +78,34 @@
     <li>Make sure the Pyro Name Server is running.</li>
 
     <li>Start your server process. If it complains that the names it wants to register already exist, use the
-    <code>nsc</code> tool to unregister them, or restart the NS.</li>
+    <code>pyro-nsc</code> tool to unregister them, or restart the NS.</li>
 
     <li>Run the client!</li>
   </ol>In the following sections each step is explained in more detail.
 
-  <h3><a name="scripts" id="scripts"></a>Pyro script tools</h3>Before using them let us first study the usage of the
-  script tools. Pyro comes with two flavors, Un*x-style shellscripts and Windows/DOS batch files. The Windows-style
-  batch files have the '.bat' extension. When you're using an Amiga, you can use the Un*x-style shellscripts when
-  you've installed the latest 'ExecuteHack'. You might want to make them executable using <code>protect +es #?</code>.
-  If it doesn't work, try executing them as regular python scripts, for instance: <code>python nsc list</code>. All
-  scripts have to be called from a shell command prompt.
+  <h3><a name="scripts" id="scripts"></a>Pyro script tools</h3>
+  <p>Before using them let us first study the usage of the
+  script tools. Pyro comes with two flavors, Un*x-style shellscripts and Windows/DOS command files. The Windows-style
+command files have the '.cmd' extension. </p>
 
   <dl>
-    <dt><code>genguid</code> &nbsp;&nbsp;(GUID generator)</dt>
+    <dt><code>pyro-genguid</code> &nbsp;&nbsp;(GUID generator)</dt>
 
     <dd>- No arguments<br>
     - This is a very simple GUID generator. It uses the internal Pyro GUID generator to print a new GUID.<br>
     <br></dd>
 
-    <dt><code>ns, rns</code> &nbsp;&nbsp;(Name Server)</dt>
+    <dt><code>pyro-ns, pyro-rns</code> &nbsp;&nbsp;(Name Server)</dt>
 
     <dd>These scripts are explained in the <a href="5-nameserver.html#cmds">Name Server chapter</a>.<br>
     <br></dd>
 
-    <dt><code>es</code> &nbsp;&nbsp;(Event Server)</dt>
+    <dt><code>pyro-es</code> &nbsp;&nbsp;(Event Server)</dt>
 
     <dd>This script is explained in the <a href="11-services.html#event">Event Server (Pyro Services) chapter</a>.<br>
     <br></dd>
 
-    <dt><code>nsc</code> &nbsp;&nbsp;(Name Server Control tool)</dt>
+    <dt><code>pyro-nsc</code> &nbsp;&nbsp;(Name Server Control tool)</dt>
 
     <dd>
       - Arguments: [-h host] [-p port] [-i identification] command [args...]<br>
@@ -141,7 +139,7 @@
       </ul><br>
     </dd>
 
-    <dt><code>xnsc</code> &nbsp;&nbsp;(Graphical NS control tool)</dt>
+    <dt><code>pyro-xnsc</code> &nbsp;&nbsp;(Graphical NS control tool)</dt>
 
     <dd>- No arguments<br>
     - This is a graphical version of the <code>nsc</code> command-line tool. Currently it needs Tk for the GUI, so you
@@ -153,13 +151,13 @@
     security reasons. You have to type it again if you need to reconnect.<br>
     <br></dd>
     
-    <dt><code>wxnsc</code> &nbsp;&nbsp;(Alternative Graphical NS control tool)</dt>
+    <dt><code>pyro-wxnsc</code> &nbsp;&nbsp;(Alternative Graphical NS control tool)</dt>
     <dd>- No arguments<br>
     	- This is similar to the <code>xnsc</code> tool, but based on the WxPython GUI toolkit.
     	<br>
     <br></dd>
 
-    <dt><code>nssvc, essvc</code> &nbsp;&nbsp;(Windows-only Name Server and Event Server 'NT-service' control
+    <dt><code>pyro-nssvc, pyro-essvc</code> &nbsp;&nbsp;(Windows-only Name Server and Event Server 'NT-service' control
     scripts)</dt>
 
     <dd>These scripts are explained in the <a href="5-nameserver.html#cmds">Name Server chapter</a> and the <a href=
@@ -544,8 +542,8 @@ support broadcasting, or the NS can't be reached by a broadcast (because it sits
   <h3><a name="runtimectrl" id="runtimectrl"></a>Runtime control and Logging</h3>
 
   <h4>Controlling the Name Server</h4>You might want to control the NS while it's running. For instance, to inspect the
-  current registered names or to remove an old name, or to register a new one by hand. You use the <code>nsc</code>
-  command-line utility or the <code>xnsc</code> graphical tool for this purpose, see <a href="#scripts">Pyro script
+  current registered names or to remove an old name, or to register a new one by hand. You use the <code>pyro-nsc</code>
+  command-line utility or the <code>pyro-xnsc</code> graphical tool for this purpose, see <a href="#scripts">Pyro script
   tools</a>.
 
   <h4>Controlling Pyro</h4>Pyro has many configuration items that can be changed also during runtime. You might want to

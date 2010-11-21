@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-$Id: wxnsc.py,v 1.10 2005/02/12 23:45:29 irmen Exp $
+$Id: wxnsc.py,v 1.10.2.1 2007/05/07 18:56:26 irmen Exp $
 
 A wxPython gui to nsc (Pyro Name Server Control tool).
 This gui doesn't have as many features as the xnsc that ships with Pyro,
@@ -31,8 +31,8 @@ Usage (from the commandline):
 """
 
 __author__   = "Jan Finell"
-__date__     = "$Date: 2005/02/12 23:45:29 $"
-__revision__ = "$Revision: 1.10 $"
+__date__     = "$Date: 2007/05/07 18:56:26 $"
+__revision__ = "$Revision: 1.10.2.1 $"
 
 #
 # Standard modules
@@ -42,7 +42,7 @@ import os, sys, socket
 #
 # GUI modules
 #
-from wxPython.wx import *
+import wx
 
 #
 # Pyro modules
@@ -155,7 +155,7 @@ def show_message_dialog(parent, msg, title, style):
    if sys.platform[:3] == 'win':
       dlg = WinMessageDialog(parent, msg, title, style)
    else:
-      dlg = wxMessageDialog(parent, msg, title, style)
+      dlg = wx.MessageDialog(parent, msg, title, style)
    dlg.CentreOnParent()
    retval = dlg.ShowModal()
    dlg.Destroy()
@@ -165,15 +165,15 @@ def show_message_dialog(parent, msg, title, style):
 ## Classes
 
 
-class wxStdoutLog(wxTextCtrl):
+class wx_StdoutLog(wx.TextCtrl):
    """
    :Purpose: A simple text ctrl that can be used for logging standard out
    """
    def write(self, data):
       if data.strip():
-         wxTextCtrl.AppendText(self, '%s\n' % data)
+         wx.TextCtrl.AppendText(self, '%s\n' % data)
 
-class wxNSC(wxFrame):
+class wx_NSC(wx.Frame):
    """
    :Purpose: The main frame of the GUI.
    """
@@ -185,16 +185,16 @@ class wxNSC(wxFrame):
          - `nsPort`: the name server port. By default the Pyro name
                      server port is 9090
       """
-      wxFrame.__init__(self, None, -1, 'Pyro Name Server')
+      wx.Frame.__init__(self, None, -1, 'Pyro Name Server')
       self.nsHost           = nsHost
       self.nsPort           = nsPort
       self.NS               = None
 
       self._build()
-      imageList = wxImageList(16,16)
-      self.__idGroup = imageList.Add(wxBitmapFromXPMData(GROUP_XPM))
-      self.__idItem  = imageList.Add(wxBitmapFromXPMData(ITEM_XPM))
-      self.__idGroupOpen = imageList.Add(wxBitmapFromXPMData(GROUP_OPEN_XPM))
+      imageList = wx.ImageList(16,16)
+      self.__idGroup = imageList.Add(wx.BitmapFromXPMData(GROUP_XPM))
+      self.__idItem  = imageList.Add(wx.BitmapFromXPMData(ITEM_XPM))
+      self.__idGroupOpen = imageList.Add(wx.BitmapFromXPMData(GROUP_OPEN_XPM))
       self.treeCtrlItems.SetImageList(imageList)
       self.__imageList = imageList
 
@@ -206,7 +206,7 @@ class wxNSC(wxFrame):
       if self.NS: self.update()
       
    #-- public methods --#      
-   def enable(self, enable=true):
+   def enable(self, enable=True):
       """
       Enabling/disabling some of the buttons.
       """
@@ -225,7 +225,7 @@ class wxNSC(wxFrame):
       root = tree.AddRoot(':')
       tree.SetItemImage(root, self.__idGroup)
       tree.SetItemImage(root, self.__idGroupOpen,
-                        wxTreeItemIcon_Expanded)
+                        wx.TreeItemIcon_Expanded)
       self._populate_tree(tree, root, ':')
 
       # enabling/disabling buttons, depending on the current state.
@@ -241,14 +241,14 @@ class wxNSC(wxFrame):
          tree.SetPyData(groupB, 0)
          tree.SetItemImage(groupB, self.__idGroup)
          tree.SetItemImage(groupB, self.__idGroupOpen,
-                           wxTreeItemIcon_Expanded)
+                           wx.TreeItemIcon_Expanded)
          self._populate_tree(tree, groupB, subgroup)
       for item in itemsL:
          itemB = tree.AppendItem(parent, item)
          tree.SetPyData(itemB, 1)
          tree.SetItemImage(itemB, self.__idItem)
          tree.SetItemImage(itemB, self.__idItem,
-                           wxTreeItemIcon_Selected)
+                           wx.TreeItemIcon_Selected)
    #-- nsc methods --#
    def nsc_findNS(self, ident=None):
       """
@@ -271,10 +271,10 @@ class wxNSC(wxFrame):
       except ConnectionDeniedError, e:
          if str(e).find( Pyro.constants.deniedReasons[Pyro.constants.DENIED_SECURITY] ) != -1:
             msg = 'Authentication required:'
-            dlg = wxTextEntryDialog(self, msg, 'Authentication',
-                                    style=wxOK|wxCANCEL|wxTE_PASSWORD)
+            dlg = wx.TextEntryDialog(self, msg, 'Authentication',
+                                    style=wx.OK|wx.CANCEL|wx.TE_PASSWORD)
             dlg.CentreOnParent()
-            if dlg.ShowModal() == wxID_OK:
+            if dlg.ShowModal() == wx.ID_OK:
                ident = dlg.GetValue()
                self.nsc_findNS(ident)
             else:
@@ -446,9 +446,9 @@ class wxNSC(wxFrame):
          parentGroupI    = tree.GetRootItem()
          parentGroupName = ':'
       msg = 'Create group in "%s", with name:' % parentGroupName
-      dlg = wxTextEntryDialog(self, msg, 'Enter group name')
+      dlg = wx.TextEntryDialog(self, msg, 'Enter group name')
       dlg.CentreOnParent()
-      if dlg.ShowModal() == wxID_OK:
+      if dlg.ShowModal() == wx.ID_OK:
          if parentGroupName != ':':
             groupName = '%s.%s' % (parentGroupName, dlg.GetValue())
          else:
@@ -458,7 +458,7 @@ class wxNSC(wxFrame):
             tree.SetPyData(groupI, 0)
             tree.SetItemImage(groupI, self.__idGroup)
             tree.SetItemImage(groupI, self.__idGroupOpen,
-                              wxTreeItemIcon_Expanded)
+                              wx.TreeItemIcon_Expanded)
             tree.Expand(parentGroupI)
 
    def OnSetMeta(self, ev=None):
@@ -471,9 +471,9 @@ class wxNSC(wxFrame):
       if namesL:     
          namesS = ',\n '.join(namesL)
          msg = 'User meta data string for:\n %s' % namesS
-         dlg = wxTextEntryDialog(self, msg, 'Enter meta data')
+         dlg = wx.TextEntryDialog(self, msg, 'Enter meta data')
          dlg.CentreOnParent()
-         if dlg.ShowModal() == wxID_OK:
+         if dlg.ShowModal() == wx.ID_OK:
             meta=dlg.GetValue()
             for name in namesL:
                self.nsc_set_meta(name,meta)
@@ -498,8 +498,8 @@ class wxNSC(wxFrame):
          namesS = ',\n '.join(namesL)
          ret = show_message_dialog(self,
                          'Really delete following name(s)?:\n %s' % namesS,
-                         '-- Confirm --', wxYES|wxNO|wxICON_QUESTION)
-         if ret == wxID_YES:
+                         '-- Confirm --', wx.YES|wx.NO|wx.ICON_QUESTION)
+         if ret == wx.ID_YES:
             for name, i in zip(namesL,deleteL):
                if self.nsc_delete(name):
                   tree.Delete(i)
@@ -523,8 +523,8 @@ class wxNSC(wxFrame):
          namesS = ',\n'.join(namesL)
          ret = show_message_dialog(self,
                            'Really delete following group(s)?:\n %s' % namesS,
-                           '-- Confirm --', wxYES|wxNO|wxICON_QUESTION)
-         if ret == wxID_YES:
+                           '-- Confirm --', wx.YES|wx.NO|wx.ICON_QUESTION)
+         if ret == wx.ID_YES:
             for name, i in zip(namesL, deleteL):
                if self.nsc_delete_group(name):
                   tree.Delete(i)
@@ -567,9 +567,9 @@ class wxNSC(wxFrame):
          parentGroupName = ':'
          
       msg = 'Register new item in "%s", with:\n <name> <URI>' % parentGroupName
-      dlg =  wxTextEntryDialog(self, msg, 'Register item')
+      dlg =  wx.TextEntryDialog(self, msg, 'Register item')
       dlg.CentreOnParent()
-      if dlg.ShowModal() == wxID_OK:
+      if dlg.ShowModal() == wx.ID_OK:
          try:
             itemName, uri = dlg.GetValue().split()
          except:
@@ -585,7 +585,7 @@ class wxNSC(wxFrame):
                tree.SetPyData(itemI, 1)
                tree.SetItemImage(itemI, self.__idItem)
                tree.SetItemImage(itemI, self.__idItem,
-                                 wxTreeItemIcon_Selected)
+                                 wx.TreeItemIcon_Selected)
                tree.Expand(parentGroupI)
                
    def OnUpdate(self, event):
@@ -630,13 +630,13 @@ class wxNSC(wxFrame):
       """
       start = self.txtCtrlLog.GetLastPosition()
       self.txtCtrlLog.AppendText('%s\n' % line)
-      color = wxBLACK
+      color = wx.BLACK
       if status == 'info':
-         color = wxBLUE
+         color = wx.BLUE
       elif status == 'error':
-         color = wxRED
+         color = wx.RED
       self.txtCtrlLog.SetStyle(start, self.txtCtrlLog.GetLastPosition(),
-                               wxTextAttr(color))
+                               wx.TextAttr(color))
 
    def _logError(self, line):
       """
@@ -646,7 +646,7 @@ class wxNSC(wxFrame):
       if a == ConnectionClosedError:
          self.NS = None
          self._log('Connection with Name Server lost', 'error')
-         self.enable(false)  
+         self.enable(False)  
       import traceback, cStringIO
       buf = cStringIO.StringIO()
       traceback.print_exc(file = buf)
@@ -686,58 +686,58 @@ class wxNSC(wxFrame):
       """
       Binding events to the gui widgets.
       """
-      EVT_BUTTON(self, self.buttonPing.GetId(), self.OnPing)
-      EVT_BUTTON(self, self.buttonUpdate.GetId(), self.OnUpdate)
-      EVT_BUTTON(self, self.buttonClose.GetId(), self.OnClose)
-      EVT_BUTTON(self, self.buttonDeleteGroup.GetId(), self.OnDeleteGroup)
-      EVT_BUTTON(self, self.buttonCreateGroup.GetId(), self.OnCreateGroup)
-      EVT_BUTTON(self, self.buttonDeleteSelected.GetId(), self.OnDelete)
-      EVT_BUTTON(self, self.buttonRegisterItem.GetId(), self.OnRegisterItem)
-      EVT_BUTTON(self, self.buttonShowMeta.GetId(), self.OnShowMeta)
-      EVT_BUTTON(self, self.buttonSetMeta.GetId(), self.OnSetMeta)
-      EVT_TEXT_ENTER(self, self.txtCtrlNSHost.GetId(), self.OnCheckNS)
-      EVT_TEXT_ENTER(self, self.txtCtrlNSPort.GetId(), self.OnCheckNS)
-      EVT_CHAR(self.treeCtrlItems, self.OnKeyPressed)
+      wx.EVT_BUTTON(self, self.buttonPing.GetId(), self.OnPing)
+      wx.EVT_BUTTON(self, self.buttonUpdate.GetId(), self.OnUpdate)
+      wx.EVT_BUTTON(self, self.buttonClose.GetId(), self.OnClose)
+      wx.EVT_BUTTON(self, self.buttonDeleteGroup.GetId(), self.OnDeleteGroup)
+      wx.EVT_BUTTON(self, self.buttonCreateGroup.GetId(), self.OnCreateGroup)
+      wx.EVT_BUTTON(self, self.buttonDeleteSelected.GetId(), self.OnDelete)
+      wx.EVT_BUTTON(self, self.buttonRegisterItem.GetId(), self.OnRegisterItem)
+      wx.EVT_BUTTON(self, self.buttonShowMeta.GetId(), self.OnShowMeta)
+      wx.EVT_BUTTON(self, self.buttonSetMeta.GetId(), self.OnSetMeta)
+      wx.EVT_TEXT_ENTER(self, self.txtCtrlNSHost.GetId(), self.OnCheckNS)
+      wx.EVT_TEXT_ENTER(self, self.txtCtrlNSPort.GetId(), self.OnCheckNS)
+      wx.EVT_CHAR(self.treeCtrlItems, self.OnKeyPressed)
       
    def _build(self):
       """
       Building widgets and setting static widget data.      
       """
-      parent = wxPanel(self, -1)
-      sizer0 = wxBoxSizer(wxVERTICAL)
-      sizer0.Add(self._buildTopBar(parent), 0, wxALIGN_LEFT|wxGROW, 5)
+      parent = wx.Panel(self, -1)
+      sizer0 = wx.BoxSizer(wx.VERTICAL)
+      sizer0.Add(self._buildTopBar(parent), 0, wx.ALIGN_LEFT|wx.GROW, 5)
 
-      splitter = wxSplitterWindow(parent, -1)
+      splitter = wx.SplitterWindow(parent, -1)
       #- TOP PART --------------------------------------------------------#
-      topParent = wxPanel(splitter, -1)
-      topSizer = wxBoxSizer(wxVERTICAL)
-      self.treeCtrlItems = wxTreeCtrl(topParent, -1,
-                         style = wxTR_TWIST_BUTTONS|wxTR_LINES_AT_ROOT|wxTR_HAS_BUTTONS|wxTR_HIDE_ROOT|wxTR_MULTIPLE)
-      topSizer.Add(self.treeCtrlItems, 1, wxEXPAND, 5)
-      topParent.SetAutoLayout( true )
+      topParent = wx.Panel(splitter, -1)
+      topSizer = wx.BoxSizer(wx.VERTICAL)
+      self.treeCtrlItems = wx.TreeCtrl(topParent, -1,
+                         style = wx.TR_TWIST_BUTTONS|wx.TR_LINES_AT_ROOT|wx.TR_HAS_BUTTONS|wx.TR_HIDE_ROOT|wx.TR_MULTIPLE)
+      topSizer.Add(self.treeCtrlItems, 1, wx.EXPAND, 5)
+      topParent.SetAutoLayout( True )
       topParent.SetSizer(topSizer )
       topSizer.Fit(topParent)
       topSizer.SetSizeHints(topParent)
       #-------------------------------------------------------------------#
       #- BOTTOM PART -----------------------------------------------------#
-      bottomParent = wxPanel(splitter,-1)
-      bottomSizer = wxBoxSizer(wxVERTICAL)
-      self.txtCtrlLog=wxStdoutLog(bottomParent, -1, "",
-                                  size= wxSize(-1, 10),
-                                  style=wxTE_MULTILINE|wxTE_READONLY|wxTE_RICH)
-      bottomSizer.Add(self.txtCtrlLog, 1, wxEXPAND, 5)
-      bottomParent.SetAutoLayout( true )
+      bottomParent = wx.Panel(splitter,-1)
+      bottomSizer = wx.BoxSizer(wx.VERTICAL)
+      self.txtCtrlLog=wx_StdoutLog(bottomParent, -1, "",
+                                  size= wx.Size(-1, 10),
+                                  style=wx.TE_MULTILINE|wx.TE_READONLY|wx.TE_RICH)
+      bottomSizer.Add(self.txtCtrlLog, 1, wx.EXPAND, 5)
+      bottomParent.SetAutoLayout( True )
       bottomParent.SetSizer(bottomSizer )
       bottomSizer.Fit(bottomParent)
       bottomSizer.SetSizeHints(bottomParent)
       #-------------------------------------------------------------------#
       splitter.SplitHorizontally(topParent,bottomParent, -100)
-      sizer0.Add(splitter, 1, wxEXPAND|wxALIGN_CENTRE, 5)
+      sizer0.Add(splitter, 1, wx.EXPAND|wx.ALIGN_CENTRE, 5)
       
-      self.buttonClose = wxButton(parent, -1, 'Close')         # buttonClose
-      sizer0.Add(self.buttonClose, 0, wxALIGN_CENTRE|wxALL, 5)
+      self.buttonClose = wx.Button(parent, -1, 'Close')         # buttonClose
+      sizer0.Add(self.buttonClose, 0, wx.ALIGN_CENTRE|wx.ALL, 5)
       
-      parent.SetAutoLayout( true )
+      parent.SetAutoLayout( True )
       parent.SetSizer( sizer0 )
       sizer0.Fit( parent)
       sizer0.SetSizeHints( parent)
@@ -746,78 +746,78 @@ class wxNSC(wxFrame):
       """
       Widget building
       """
-      sizer0 = wxBoxSizer(wxVERTICAL)
+      sizer0 = wx.BoxSizer(wx.VERTICAL)
       #--
-      sizer1 = wxBoxSizer(wxHORIZONTAL)
-      txt1 = wxStaticText(parent, -1, 'Name Server:')
-      txt1.SetForegroundColour(wxBLUE)
-      sizer1.Add(txt1, 0, wxALIGN_LEFT|wxALIGN_CENTRE|wxALL, 5)
-      self.txtCtrlNSHost = wxTextCtrl(parent, -1, '', size=wxSize(300,-1),
-                                      style=wxTE_PROCESS_ENTER)
+      sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+      txt1 = wx.StaticText(parent, -1, 'Name Server:')
+      txt1.SetForegroundColour(wx.BLUE)
+      sizer1.Add(txt1, 0, wx.ALIGN_LEFT|wx.ALIGN_CENTRE|wx.ALL, 5)
+      self.txtCtrlNSHost = wx.TextCtrl(parent, -1, '', size=wx.Size(300,-1),
+                                      style=wx.TE_PROCESS_ENTER)
       sizer1.Add(self.txtCtrlNSHost, 0,
-                       wxALIGN_LEFT|wxALIGN_BOTTOM|wxTOP|wxBOTTOM, 5)
-      txtColon = wxStaticText(parent, -1, ':')
-      txtColon.SetForegroundColour(wxBLUE)
+                       wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.TOP|wx.BOTTOM, 5)
+      txtColon = wx.StaticText(parent, -1, ':')
+      txtColon.SetForegroundColour(wx.BLUE)
       sizer1.Add(txtColon, 0,
-                       wxALIGN_LEFT|wxALIGN_CENTRE|wxTOP|wxBOTTOM, 5)
-      self.txtCtrlNSPort = wxTextCtrl(parent, -1, '', size=wxSize(50,-1),
-                                      style=wxTE_PROCESS_ENTER)
+                       wx.ALIGN_LEFT|wx.ALIGN_CENTRE|wx.TOP|wx.BOTTOM, 5)
+      self.txtCtrlNSPort = wx.TextCtrl(parent, -1, '', size=wx.Size(50,-1),
+                                      style=wx.TE_PROCESS_ENTER)
       sizer1.Add(self.txtCtrlNSPort, 0,
-                       wxALIGN_LEFT|wxALIGN_BOTTOM|wxTOP|wxBOTTOM, 5)
-      self.buttonUpdate = wxButton(parent, -1, 'Update')       # buttonUpdate
-      sizer1.Add(self.buttonUpdate, 0, wxALIGN_LEFT|wxALL, 5)
-      self.buttonPing = wxButton(parent, -1, 'Ping')           # buttonPing
-      sizer1.Add(self.buttonPing, 0, wxALIGN_LEFT|wxALL, 5)
-      sizer0.Add(sizer1, 0, wxALIGN_LEFT|wxGROW, 5)
+                       wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.TOP|wx.BOTTOM, 5)
+      self.buttonUpdate = wx.Button(parent, -1, 'Update')       # buttonUpdate
+      sizer1.Add(self.buttonUpdate, 0, wx.ALIGN_LEFT|wx.ALL, 5)
+      self.buttonPing = wx.Button(parent, -1, 'Ping')           # buttonPing
+      sizer1.Add(self.buttonPing, 0, wx.ALIGN_LEFT|wx.ALL, 5)
+      sizer0.Add(sizer1, 0, wx.ALIGN_LEFT|wx.GROW, 5)
       #--
-      lineH1 = wxStaticLine(parent, -1, style=wxLI_HORIZONTAL)
-      sizer0.Add(lineH1, 0, wxGROW|wxALIGN_CENTRE|wxLEFT|wxRIGHT, 5)
+      lineH1 = wx.StaticLine(parent, -1, style=wx.LI_HORIZONTAL)
+      sizer0.Add(lineH1, 0, wx.GROW|wx.ALIGN_CENTRE|wx.LEFT|wx.RIGHT, 5)
       #--
-      sizer2 = wxBoxSizer(wxHORIZONTAL)
-      self.buttonDeleteGroup = wxButton(parent, -1, ' Delete group(s) ')
+      sizer2 = wx.BoxSizer(wx.HORIZONTAL)
+      self.buttonDeleteGroup = wx.Button(parent, -1, ' Delete group(s) ')
       sizer2.Add(self.buttonDeleteGroup, 0,
-                       wxALIGN_LEFT|wxALIGN_CENTER|wxTOP|wxLEFT|wxBOTTOM, 5)
-      self.buttonCreateGroup = wxButton(parent, -1, ' Create group... ')
+                       wx.ALIGN_LEFT|wx.ALIGN_CENTER|wx.TOP|wx.LEFT|wx.BOTTOM, 5)
+      self.buttonCreateGroup = wx.Button(parent, -1, ' Create group... ')
       sizer2.Add(self.buttonCreateGroup, 0,
-                       wxALIGN_LEFT|wxALIGN_CENTER|wxTOP|wxLEFT|wxBOTTOM, 5)
-      lineV1 = wxStaticLine(parent, -1, style=wxLI_VERTICAL)
+                       wx.ALIGN_LEFT|wx.ALIGN_CENTER|wx.TOP|wx.LEFT|wx.BOTTOM, 5)
+      lineV1 = wx.StaticLine(parent, -1, style=wx.LI_VERTICAL)
       sizer2.Add(lineV1, 0,
-                       wxALL|wxGROW, 5)
-      self.buttonDeleteSelected = wxButton(parent, -1,
+                       wx.ALL|wx.GROW, 5)
+      self.buttonDeleteSelected = wx.Button(parent, -1,
                                            ' Delete item(s) ')
       sizer2.Add(self.buttonDeleteSelected, 0,
-                       wxALIGN_LEFT|wxALIGN_CENTER|wxALL, 5)
-      self.buttonRegisterItem = wxButton(parent, -1, ' Register item... ')
+                       wx.ALIGN_LEFT|wx.ALIGN_CENTER|wx.ALL, 5)
+      self.buttonRegisterItem = wx.Button(parent, -1, ' Register item... ')
       sizer2.Add(self.buttonRegisterItem, 0,
-                       wxALIGN_LEFT|wxALIGN_CENTER|wxTOP|wxBOTTOM, 5)
-      lineV2 = wxStaticLine(parent, -1, style=wxLI_VERTICAL)
+                       wx.ALIGN_LEFT|wx.ALIGN_CENTER|wx.TOP|wx.BOTTOM, 5)
+      lineV2 = wx.StaticLine(parent, -1, style=wx.LI_VERTICAL)
       sizer2.Add(lineV2, 0,
-                       wxALL|wxGROW, 5)
-      self.buttonShowMeta = wxButton(parent, -1, ' Show meta ')
+                       wx.ALL|wx.GROW, 5)
+      self.buttonShowMeta = wx.Button(parent, -1, ' Show meta ')
       sizer2.Add(self.buttonShowMeta, 0,
-                       wxALIGN_LEFT|wxALIGN_CENTER|wxTOP|wxBOTTOM, 5)
-      self.buttonSetMeta = wxButton(parent, -1, ' Set meta ')
+                       wx.ALIGN_LEFT|wx.ALIGN_CENTER|wx.TOP|wx.BOTTOM, 5)
+      self.buttonSetMeta = wx.Button(parent, -1, ' Set meta ')
       sizer2.Add(self.buttonSetMeta, 0,
-                       wxALIGN_LEFT|wxALIGN_CENTER|wxTOP|wxBOTTOM, 5)
-      sizer0.Add(sizer2, 0, wxALIGN_LEFT, 5)
+                       wx.ALIGN_LEFT|wx.ALIGN_CENTER|wx.TOP|wx.BOTTOM, 5)
+      sizer0.Add(sizer2, 0, wx.ALIGN_LEFT, 5)
       #--
       return sizer0
 
 #----------------------------------------------------------------------#
-class WinMessageDialog(wxDialog):
+class WinMessageDialog(wx.Dialog):
     '''
     :Purpose: Message dialog for MS Win.
-              The parameters are the same as for wxMessageDialog
+              The parameters are the same as for wx.MessageDialog
 
-    :Detail: On Windows the native wxMessageDialog can not
+    :Detail: On Windows the native wx.MessageDialog can not
              be centered on top of the parent or positioned, ie.
              it will always be centered on the screen.
              
     '''
     def __init__(self, parent=None, message='Message:',
-                 caption='Message', style=wxOK|wxCANCEL,pos=wxDefaultPosition):
-        wxDialog.__init__(self, parent, -1, caption, size=wxDefaultSize,
-                          style=wxCAPTION, pos=pos)
+                 caption='Message', style=wx.OK|wx.CANCEL,pos=wx.DefaultPosition):
+        wx.Dialog.__init__(self, parent, -1, caption, size=wx.DefaultSize,
+                          style=wx.CAPTION, pos=pos)
         self._build(message, style)
         self.Fit()
         
@@ -825,64 +825,64 @@ class WinMessageDialog(wxDialog):
         self.EndModal(ev.GetId())
         
     def _build(self, msg, style):
-        parent   = wxPanel(self, -1)
-        sizer    = wxBoxSizer(wxVERTICAL)
+        parent   = wx.Panel(self, -1)
+        sizer    = wx.BoxSizer(wx.VERTICAL)
         #-- icon and message --#
-        msgSizer = wxBoxSizer(wxHORIZONTAL)
+        msgSizer = wx.BoxSizer(wx.HORIZONTAL)
 
         # icon #
         artID = None
-        if style & wxICON_EXCLAMATION == wxICON_EXCLAMATION \
-               or style & wxICON_HAND == wxICON_HAND:
-            artID = wxART_WARNING
-        elif style & wxICON_ERROR == wxICON_ERROR:
-            artID = wxART_ERROR
-        elif style & wxICON_QUESTION == wxICON_QUESTION:
-            artID = wxART_QUESTION
-        elif style & wxICON_INFORMATION == wxICON_INFORMATION:
-            artID = wxART_INFORMATION
+        if style & wx.ICON_EXCLAMATION == wx.ICON_EXCLAMATION \
+               or style & wx.ICON_HAND == wx.ICON_HAND:
+            artID = wx.ART_WARNING
+        elif style & wx.ICON_ERROR == wx.ICON_ERROR:
+            artID = wx.ART_ERROR
+        elif style & wx.ICON_QUESTION == wx.ICON_QUESTION:
+            artID = wx.ART_QUESTION
+        elif style & wx.ICON_INFORMATION == wx.ICON_INFORMATION:
+            artID = wx.ART_INFORMATION
         if artID:
-            bmp = wxArtProvider_GetBitmap(artID, wxART_MESSAGE_BOX, (48,48))
-            bmpIcon = wxStaticBitmap(parent, -1, bmp)
-            msgSizer.Add(bmpIcon, 0, wxALIGN_CENTRE|wxALL, 5)
+            bmp = wx.ArtProvider_GetBitmap(artID, wx.ART_MESSAGE_BOX, (48,48))
+            bmpIcon = wx.StaticBitmap(parent, -1, bmp)
+            msgSizer.Add(bmpIcon, 0, wx.ALIGN_CENTRE|wx.ALL, 5)
 
         # msg #
-        txtMsg = wxStaticText(parent, -1, msg, style=wxALIGN_CENTRE)
-        msgSizer.Add(txtMsg, 0, wxALIGN_CENTRE|wxALL, 5)
+        txtMsg = wx.StaticText(parent, -1, msg, style=wx.ALIGN_CENTRE)
+        msgSizer.Add(txtMsg, 0, wx.ALIGN_CENTRE|wx.ALL, 5)
 
-        sizer.Add(msgSizer, 0, wxALIGN_CENTRE, 5)
-        line = wxStaticLine(parent, -1, style=wxLI_HORIZONTAL)
-        sizer.Add(line, 0, wxGROW|wxALL, 5)
+        sizer.Add(msgSizer, 0, wx.ALIGN_CENTRE, 5)
+        line = wx.StaticLine(parent, -1, style=wx.LI_HORIZONTAL)
+        sizer.Add(line, 0, wx.GROW|wx.ALL, 5)
         #-- buttons --#
-        btnSizer = wxBoxSizer(wxHORIZONTAL)
+        btnSizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        if style & wxYES_NO == wxYES_NO:
-            btnYes = wxButton(parent, wxID_YES, 'Yes')
+        if style & wx.YES_NO == wx.YES_NO:
+            btnYes = wx.Button(parent, wx.ID_YES, 'Yes')
             btnSizer.Add(btnYes, 0,
-                               wxALIGN_CENTRE|wxLEFT|wxRIGHT, 10)
-            btnNo  = wxButton(parent, wxID_NO, 'No')
+                               wx.ALIGN_CENTRE|wx.LEFT|wx.RIGHT, 10)
+            btnNo  = wx.Button(parent, wx.ID_NO, 'No')
             btnSizer.Add(btnNo, 0,
-                               wxALIGN_CENTRE|wxLEFT|wxRIGHT, 10)
-            if style & wxYES_DEFAULT == wxYES_DEFAULT:
+                               wx.ALIGN_CENTRE|wx.LEFT|wx.RIGHT, 10)
+            if style & wx.YES_DEFAULT == wx.YES_DEFAULT:
                 btnYes.SetDefault()
-            elif style & wxNO_DEFAULT == wxNO_DEFAULT:
+            elif style & wx.NO_DEFAULT == wx.NO_DEFAULT:
                 btnNo.SetDefault()
-            EVT_BUTTON(self, wxID_YES, self.OnButton)
-            EVT_BUTTON(self, wxID_NO, self.OnButton)
+            wx.EVT_BUTTON(self, wx.ID_YES, self.OnButton)
+            wx.EVT_BUTTON(self, wx.ID_NO, self.OnButton)
         else:
-            if style & wxOK == wxOK:
-                btnOK = wxButton(parent, wxID_OK, 'OK')
+            if style & wx.OK == wx.OK:
+                btnOK = wx.Button(parent, wx.ID_OK, 'OK')
                 btnOK.SetDefault()
                 btnSizer.Add(btnOK, 0,
-                                   wxALIGN_CENTRE|wxLEFT|wxRIGHT, 10)
-            if style & wxCANCEL == wxCANCEL:
-                btnCancel = wxButton(parent, wxID_CANCEL, 'Cancel')
+                                   wx.ALIGN_CENTRE|wx.LEFT|wx.RIGHT, 10)
+            if style & wx.CANCEL == wx.CANCEL:
+                btnCancel = wx.Button(parent, wx.ID_CANCEL, 'Cancel')
                 btnSizer.Add(btnCancel, 0,
-                                   wxALIGN_CENTRE|wxLEFT|wxRIGHT, 10)
+                                   wx.ALIGN_CENTRE|wx.LEFT|wx.RIGHT, 10)
 
-        sizer.Add(btnSizer, 0, wxALIGN_CENTRE|wxTOP, 5)
+        sizer.Add(btnSizer, 0, wx.ALIGN_CENTRE|wx.TOP, 5)
         #--
-        parent.SetAutoLayout( true )
+        parent.SetAutoLayout( True )
         parent.SetSizer(sizer )
         sizer.Fit( parent )
         sizer.SetSizeHints( parent )
@@ -907,15 +907,15 @@ def main(argv):
       print "Illegal number of arguments"
       raise SystemExit(1)
    
-   class wxNSCApp(wxApp):
+   class wx_NSCApp(wx.App):
       def OnInit(self):
          Pyro.core.initClient()
-         frame = wxNSC(nsHost, nsPort)
-         frame.SetSize(wxSize(630,450))
-         frame.Show(true)
-         return true
+         frame = wx_NSC(nsHost, nsPort)
+         frame.SetSize(wx.Size(630,450))
+         frame.Show(True)
+         return True
 
-   app = wxNSCApp(0)
+   app = wx_NSCApp(0)
    app.MainLoop()
 
 if __name__ == '__main__':

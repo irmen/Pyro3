@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 2.26 2005/05/26 21:25:14 irmen Exp $
+# $Id: setup.py,v 2.26.2.2 2007/05/19 13:31:30 irmen Exp $
 # Pyro setup script
 #
 
@@ -10,16 +10,18 @@ import sys,os
 from ConfigParser import ConfigParser
 
 def gather_scripts():
-	names = ['es', 'genguid', 'ns', 'nsc', 'rns', 'xnsc', 'wxnsc' ]
+	names = ['pyro-es', 'pyro-genguid', 'pyro-ns', 'pyro-nsc', 'pyro-rns', 'pyro-xnsc', 'pyro-wxnsc' ]
 	if sys.platform == 'win32':
-		names.extend(['nssvc','essvc']) # scripts that are only for Windows
-		names = map( lambda x: x+'.bat', names)
+		names.extend(['pyro-nssvc','pyro-essvc']) # scripts that are only for Windows
+		names = map( lambda x: x+'.cmd', names)
 	else:
-		names.extend(['esd', 'nsd']) # scripts that are not for Windows
+		names.extend(['pyro-esd', 'pyro-nsd']) # scripts that are not for Windows
 	names = map( lambda x: os.path.join( 'bin', x), names )
 	return names
 
 if __name__ == '__main__' :
+	if len(sys.argv)<=1:
+		sys.argv.append("-h")
 	if not sys.argv[1].startswith('install'):
 		scripts=gather_scripts()
 	else:	

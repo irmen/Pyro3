@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 8-example.html,v 2.21 2007/02/11 13:56:41 irmen Exp $ -->
+<!-- $Id: 8-example.html,v 2.21.2.1 2007/04/30 14:25:56 irmen Exp $ -->
 <head>
   <title>PYRO - Example</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
@@ -211,9 +211,9 @@ print test.add('String1','String2')
 
     <li>Run the application in the network. First, start the Name Server on one computer.
       <pre>
-irmen@atlantis:~ &gt; ns
+irmen@atlantis:~ &gt; pyro-ns
 *** Pyro Name Server ***
-Pyro Server Initialized. Using Pyro V3.5
+Pyro Server Initialized. Using Pyro V3.7
 URI is: PYRO://10.0.0.150:9090/0a00009604005c6282a8a516d79917fd
 URI written to: e:\Pyro_NS_URI
 Name Server started.
@@ -246,7 +246,7 @@ String1String2
 
     <li>You might want to peek in the Name Server:
       <pre>
-irmen@atlantis:~/ex &gt; nsc listall
+irmen@atlantis:~/ex &gt; pyro-nsc listall
 Locator: searching Pyro Name Server...
 NS is at 10.0.0.150 (isengard.lan) port 9090
 -------------- START DATABASE
@@ -262,7 +262,7 @@ NS is at 10.0.0.150 (isengard.lan) port 9090
     the nameserver), they will write something like this to the logfile:
       <pre>
 ------------------------------------------------------------ NEW SESSION
-2005-03-13 13:23:40   Pyro Initializing, version 3.5
+2005-03-13 13:23:40   Pyro Initializing, version 3.7
 This is initServer.
 Configuration settings are as follows:
 PYROSSL_CA_CERT = ca.pem

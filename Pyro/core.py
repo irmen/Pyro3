@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: core.py,v 2.104 2007/03/04 13:25:07 irmen Exp $
+#	$Id: core.py,v 2.104.2.1 2007/04/30 14:45:53 irmen Exp $
 #	Pyro Core Library
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -210,37 +210,15 @@ class ObjBase:
 
 
 class SynchronizedObjBase(ObjBase):
-	def __init__(self):
-		ObjBase.__init__(self)
-		# synchronized method invocations
-		self.synlock=util.getLockObject()
-	def Pyro_dyncall(self, method, flags, args):
-		# (this looks very much the same as Objbase's implementation)
-		# update the timestamp
-		self.lastUsed=time.time()
-		# find the method in this object, and call it with the supplied args.
-		keywords={}
-		if flags & constants.RIF_Keywords:
-			# reconstruct the varargs from a tuple like
-			#  (a,b,(va1,va2,va3...),{kw1:?,...})
-			keywords=args[-1]
-			args=args[:-1]
-		if flags & constants.RIF_Varargs:
-			# reconstruct the varargs from a tuple like (a,b,(va1,va2,va3...))
-			args=args[:-1]+args[-1]
-		# synchronize method invocation
-		self.synlock.acquire()
-		try:
-			# If the method is part of ObjBase, never call the delegate object because
-			# that object doesn't implement that method. If you don't check this,
-			# remote attributes won't work with delegates for instance, because the
-			# delegate object doesn't implement _r_xa. (remote_xxxattr)
-			if method in dir(ObjBase):
-				return getattr(self,method) (*args,**keywords)
-			else:
-				return getattr(self.delegate or self,method) (*args,**keywords)
-		finally:
-			self.synlock.release()
+    def __init__(self):
+        ObjBase.__init__(self)
+        self.synlock=util.getLockObject()
+    def Pyro_dyncall(self, method, flags, args):
+        self.synlock.acquire()  # synchronize method invocation
+        try:
+            return ObjBase.Pyro_dyncall(self, method,flags,args)
+        finally:
+            self.synlock.release()
 
 
 # Use this class instead if you're using callback objects and you

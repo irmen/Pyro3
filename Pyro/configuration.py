@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: configuration.py,v 2.32 2007/03/04 01:45:49 irmen Exp $
+#	$Id: configuration.py,v 2.32.2.1 2007/04/30 14:46:05 irmen Exp $
 #	Sets up Pyro's configuration (Pyro.config).
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -41,8 +41,8 @@ _defaults= {
 	'PYRO_NS2_BC_PORT':		9091,	# udp
 	'PYRO_NS_URIFILE':		'$STORAGE/Pyro_NS_URI', # (abs)
 	'PYRO_NS_DEFAULTGROUP': ':Default',
-	'PYRO_BC_RETRIES':		2,
-	'PYRO_BC_TIMEOUT':		2,
+	'PYRO_BC_RETRIES':		1,
+	'PYRO_BC_TIMEOUT':		0.75,
 	'PYRO_PICKLE_FORMAT':	PICKLE_HIGHEST_PROTOCOL,
 	'PYRO_XML_PICKLE':		None,
 	'PYRO_GNOSIS_PARANOIA': 0,
@@ -184,9 +184,11 @@ class ConfigReader:
 			newVal = self.treatSpecial(self.items[i])
 			if i in ('PYRO_STORAGE', 'PYRO_LOGFILE', 'PYRO_USER_LOGFILE', 'PYRO_NS_URIFILE'):
 				newVal=os.path.abspath(newVal)
-			# fix the variable type if it's an integer
+			# fix the variable type if it's an integer or float
 			if type(_defaults[i]) == type(42):
 				newVal = int(newVal)
+			if type(_defaults[i]) == type(0.1):
+				newVal = float(newVal)
 			self.items[i]= newVal
 
 	def processEnv(self, keys):

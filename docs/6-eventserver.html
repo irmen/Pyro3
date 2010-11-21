@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-  <!-- $Id: 6-eventserver.html,v 2.17 2007/03/07 23:08:19 irmen Exp $ -->
+  <!-- $Id: 6-eventserver.html,v 2.17.2.1 2007/04/30 14:25:56 irmen Exp $ -->
   <title>PYRO - Event Server</title>
   <link rel="stylesheet" type="text/css" href="pyromanual_print.css" media="print">
   <link rel="stylesheet" type="text/css" href="pyromanual.css" media="screen">
@@ -96,10 +96,10 @@
     <li>multithreading mode required<br></li>
   </ul>
 
-  <h3><a name="starting" id="starting"></a>Starting the Event Server</h3>Start the ES using the <code>es</code> command
-  from the <code>bin</code> directory (use <code>es.bat</code> on windows). You can specify the following
-  arguments:<br>
-  es [-h] [-n hostname] [-p port] [-i identification]
+  <h3><a name="starting" id="starting"></a>Starting the Event Server</h3>Start the ES using the <code>pyro-es</code> command
+  from the <code>bin</code> directory (use <code>pyro-es.cmd</code> on windows). You can specify the following
+  arguments:<br><br>
+  pyro-es [-h] [-n hostname] [-p port] [-i identification]
 
   <dl>
     <dt>-h</dt>
@@ -121,17 +121,17 @@
     Name Server. (this is required ofcourse when the Name Server has been started with the -i option).</dd>
 
     <dt><br>
-    There is also: <code>essvc</code> &nbsp;&nbsp;(Windows-only Event Server 'NT-service' control scripts)</dt>
+    There is also: <code>pyro-essvc</code> &nbsp;&nbsp;(Windows-only Event Server 'NT-service' control scripts)</dt>
 
     <dd>- Arguments: [options] install|update|remove|start [...]|stop|restart [...]<br>
     - On windows NT (2000/XP) systems, it's possible to register and start the Event server as a NT-service. You'll
-    have to use the <code>essvc.bat</code> script to register it as a service. Make sure you have Pyro properly
+    have to use the <code>essvc.cmd</code> script to register it as a service. Make sure you have Pyro properly
     installed in your Python's site-packages. Or make sure to register the service using an account with the correct
     PYTHONPATH setting, so that Pyro can be located. The ES service logs to <code>C:\Pyro_ES_svc.log</code> where C: is
     your system drive.<br>
     You can configure command line arguments for this service in the Registry. The key is:
     <code>HKLM\System\CurrentControlSet\Services\PyroES</code>, and the value under that key is:
-    <code>PyroServiceArguments</code> (REG_SZ, it will be asked and created for you when doing a <code>essvc.bat
+    <code>PyroServiceArguments</code> (REG_SZ, it will be asked and created for you when doing a <code>essvc.cmd
     install</code> from a command prompt).<br>
     <em>Running the ES as a windows NT service it not well supported.</em></dd>
   </dl>

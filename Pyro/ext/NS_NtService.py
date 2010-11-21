@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: NS_NtService.py,v 1.4 2004/05/23 21:48:24 irmen Exp $
+#	$Id: NS_NtService.py,v 1.4.4.1 2007/04/30 15:01:05 irmen Exp $
 #	An NT service that runs the Pyro Name Server
 #   Author: Syver Enstad  syver-en@online.no
 #
@@ -59,8 +59,10 @@ def startServer(hstn='', nsport=0, bcport=0, keep=0, persistent=0, dbdir=None, G
 	BcServerObject.keepRunning(keep)
 	if keep:
 		Log.msg("NS", 'Will ignore shutdown requests.')
+		ns.ignoreShutdown=True
 	else:
 		Log.msg("NS", 'Will accept shutdown requests.')
+		ns.ignoreShutdown=False
 
 	if Guards[0] or Guards[1]:
 		print 'Using security plugins:'
@@ -121,12 +123,11 @@ class PyroNSThread(threading.Thread):
 			try:
 				Args.getOpt('h')
 				Log.error("PyroNS_svc","""
-Usage: ns [-h] [-k] [-n hostname] [-p port] [-b port]
+Usage: ns [-h] [-n hostname] [-p port] [-b port]
 		[-d [databasefile]] [-s securitymodule]
   where -p = NS server port
 		-b = NS broadcast port
 		-n = non-default server hostname
-		-k = keep, do not respond to shutdown requests
 		-d = use persistent database, provide optional storage directory
 		-s = use given python module with security code
 		-h = print this help
@@ -144,11 +145,8 @@ Usage: ns [-h] [-k] [-n hostname] [-p port] [-b port]
 				persistent = 0
 				dbdir = None
 
-			try:
-				Args.getOpt('k')
-				keep=1
-			except KeyError:
-				keep=0
+			# we're running as a service, always ignore remote shutdown requests
+			keep=1
 
 			try:
 				secmod = __import__(Args.getOpt('s'),locals(),globals())

@@ -2,7 +2,7 @@
 
 #############################################################################
 #  
-#	$Id: nsd,v 1.1 2003/03/07 01:07:24 irmen Exp $
+#	$Id: pyro-nsd,v 1.2.2.1 2007/04/30 14:25:56 irmen Exp $
 #	Pyro Name Server Unix Daemon
 #	Author: Jeff Bauer  (jbauer@rubic.com)
 #	This software is released under the MIT software license.
