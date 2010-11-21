@@ -19,6 +19,7 @@ clean:
 	find . -name \*_URI  | xargs  rm -v
 	find . -name \*.pyo  | xargs  rm -v
 	find . -name \*.pyc  | xargs  rm -v
+	find . -name \*.class  | xargs  rm -v
 	find . -name \*.DS_Store  | xargs  rm -v
 	@echo "Removing non-CVS files..."
 	rm -fv MANIFEST 
