@@ -1,0 +1,266 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- $Id: 3-install.html,v 2.30 2004/05/27 23:03:04 irmen Exp $ -->
+<head>
+   <title>PYRO - Installation</title>
+</head>
+<body background="backdrop.jpg">
+<table border="0" width="100%">
+<tr>
+<td align="left"><a href="2-concepts.html">&lt;previous</a> | <a href="PyroManual.html">contents</a> | <a href="4-usage.html">next&gt;</a>
+<td align="right">Pyro Manual
+</tr>
+</table>
+<hr>
+
+
+<h2><u>3. Installation and Configuration</u></h2>
+Please read this entire chapter before trying to install Pyro.&nbsp; Not
+that it's complex, but just that you've seen the choices you have to make.
+<p><strong>Installation</strong><p>
+Pyro distributions contain a &quot;distutils&quot; <code>setup.py</code> script
+that will install Pyro for you; just enter the following command from a shell prompt: 
+&quot;<code>python setup.py install</code>&quot; and off you go.
+The script will ask if you want to install the Pyro script tools, and where to put them.
+If you want to do an automated (unattended) install, edit the <code>setup.cfg</code> file,
+following the directions in that file.
+<em>It will not install the documentation and the examples, only the core Pyro library and the scripts.</em>
+<p>But I will explain what exactly is in the Pyro distribution. It has a few subdirectories:
+<dl>
+<dt><code>Pyro/</code></dt>
+<dd> This is the actual Pyro package. If you do not use the supplied <code>setup.py</code>
+install script (see above) you have to install it by hand.
+Install this directory somewhere in your Python search path. On most systems (also Windows),
+the <code>lib/site-packages</code> directory is a nice place. The exact location might
+vary according to your specific Python installation.
+<dd> Alternatively, keep it where it is and manually add the Pyro root directory
+to your Python search path (e.g. in the environment variable <code>PYTHONPATH</code>).</dd>
+<dt><code>bin/</code></dt>
+<dd> This directory contains the command-line utilities. Move the contents of this directory somewhere in your shell search path.</dd>
+<dd> Alternatively, keep it where it is and manually add it to your shell search
+path.</dd>
+<dt><code>docs/</code>&nbsp;&nbsp; and&nbsp;&nbsp; <code>examples/</code></dt>
+<dd>Put those wherever you like. In docs you can find the Pyro manual, and in examples there are some Pyro examples.</dd>
+</dl>
+
+<p><strong>Configuration</strong><p>
+The default settings will do nicely in most cases. But sooner or later you will have to change some parameters of Pyro. 
+Pyro's configuration is accessed through <code>Pyro.config</code>. This object has several configuration items:<br>
+<table border=1>
+<tr><th>Configuration item<th>Type<th>Description<th>Default value
+<tr><td><code>PYRO_CONFIG_FILE</code>
+<td>string
+<td>The Pyro configuration file that is used. See below.
+<td>Special, see below</tr>
+<tr><td><code>PYRO_STORAGE</code>
+<td>string
+<td>Location where Pyro stores data like log files. <em>Read the notice at the end!</em>
+<td><i>Current directory</i></tr>
+<tr><td><code>PYRO_LOGFILE</code>
+<td>string
+<td>Name of the logfile. If it's not an absolute path, it's relative to <code>$PYRO_STORAGE</code>. It's best to modify this <em>before</em> importing <code>Pyro.util</code>!
+<td><code>Pyro_log</code></tr>
+<tr><td><code>PYRO_USER_LOGFILE</code>
+<td>string
+<td>Name of the user logfile. If it's not an absolute path, it's relative to <code>$PYRO_STORAGE</code>.
+<td><code>Pyro_userlog</code></tr>
+<tr><td><code>PYRO_TRACELEVEL</code>
+<td>number
+<td>The tracing level of Pyro, 0-3. 0=nothing, 1=only errors, 2=warnings too, 3=full: errors, warnings and notes.
+<td>0</tr> 
+<tr><td><code>PYRO_USER_TRACELEVEL</code>
+<td>number
+<td>The user tracing level, 0-3. 0=nothing, 1=only errors, 2=warnings too, 3=full: errors, warnings and notes.
+<td>0</tr>              
+<tr><td><code>PYRO_DETAILED_TRACEBACK</code>
+<td>boolean
+<td>Should Pyro dump detailed tracebacks (with dumps of local variable's values)? If set to 1 on the server, the clients will get
+detailed tracebacks from inside the server's code. You may not want this (security)...
+<td>0</tr>              
+<tr><td><code>PYRO_PRINT_REMOTE_TRACEBACK</code>
+<td>boolean
+<td>Should Pyro print remote traceback information inside exception tracebacks?
+<td>0</tr>              
+<tr><td><code>PYRO_STDLOGGING</code>
+<td>boolean
+<td>Should Pyro use new-style logging using the <code>logging</code> module (Python 2.3+)?
+<td>0</tr>              
+<tr><td><code>PYRO_STDLOGGING_CFGFILE</code>
+<td>string
+<td>Name of the configuration file that is used to configure the new-style logging. If it's not an absolute path, it's relative to <code>$PYRO_STORAGE</code>.
+If this file doesn't exist, Pyro uses the default configuration that resembles the classic Pyro logging style.
+<td><code>logging.cfg</code></tr>              
+<tr><td><code>PYRO_PICKLE_FORMAT</code>
+<td>integer
+<td>The pickle protocol format that Pyro will use for marshaling.
+<td><code>pickle.HIGHEST_PROTOCOL</code> on Python 2.3+, else 1</tr>
+<tr><td><code>PYRO_XML_PICKLE</code>
+<td>string
+<td>Whether the marshaling is done using the safe xml pickling (from Gnosis_utils or PyXML) or the default pickle.
+	The xml_pickle is not vulnerable for the <a href="9-security.html#pickle">pickle trojan problem</a>, but it is an 
+order of a magnitude slower, and requires more bandwith.
+Use &quot;any&quot; for any implementation (defaults to PyXML), &quot;pyxml&quot; for PyXML, &quot;gnosis&quot; for Gnosis.
+PyXML seems to be about three to four times faster than Gnosis, this
+could be because PyXML uses extension modules built in C.
+You need to have installed <a href="http://gnosis.cx/download/">Gnosis_Utils</a> (at least version 1.0.2, latest is 1.1.0 at the time of writing).
+For <a href="http://sourceforge.net/project/showfiles.php?group_id=6473">PyXML</a>, you need at least version 0.8, latest is 0.8.3 at the time of writing.
+<td><i>empty</i> (disabled)</tr>
+<tr><td><code>PYRO_COMPRESSION</code>
+<td>boolean
+<td>Whether the protocol should compress the data to save bandwidth (at the cost of CPU time).
+The <code>zlib</code> module is used for compression. If you don't have <code>zlib</code>, Pyro still works, but without compression.
+<td>0</tr>
+<tr><td><code>PYRO_CHECKSUM</code>
+<td>boolean
+<td>Whether the protocol should perform a checksum over the message data. This costs a little bit extra CPU time, but you
+will be quite sure that your communication is without errors.
+The <code>zlib.adler32</code> function is used for checksumming. If you don't have <code>zlib</code>, Pyro still works, but without checksumming.
+The overhead of checksumming is very small, with regular messages less than 0.1%, but
+increasing with big messages (15% for 5 Mb or so).
+<strong>Note:</strong> the checksum is by no means secure. If you want secure transmissions,
+you'll have to use SSL or build your own encryption/secure hashing functions on top of Pyro.
+<td>0</tr>
+<tr><td><code>PYRO_SOCK_KEEPALIVE</code>
+<td>boolean
+	<td>Whether Pyro should set the SO_KEEPALIVE socket option on the network sockets. This is used to detect broken client connections, to let the Pyro server clean them up nicely. It is enabled by default, but it could cause problems in certain situations so you can turn it off if you want.
+		The timeout period is system-dependent but usually around 2 hours. It depends on your OS how to change this value, but have a look at &quot;sysctl&quot;. (This feature may not be available on all
+		OS's, if your OS doesn't support it, Pyro will automatically switch it off).
+<td>1</tr>
+<tr><td><code>PYRO_MAXCONNECTIONS</code>
+<td>number
+<td>The maximum number of simultaneous connections to one Pyro server. Note that a custom connection validator may or may not take this in account. The default validator does check for this limit.
+<td>200</tr>
+<tr><td><code>PYRO_TCP_LISTEN_BACKLOG</code>
+<td>number
+<td>The size of the TCP socket listen backlog for Pyro daemons.
+<td>200</tr>
+<tr><td><code>PYRO_MULTITHREADED</code>
+<td>boolean
+<td>Whether Pyro servers should be multithreaded or not.
+<td>1 (if supported)</tr>
+<tr><td><code>PYRO_MOBILE_CODE</code>
+<td>boolean
+<td>On the server: whether Pyro should automatically download Python code from clients if
+it isn't available on the server. On the client: whether Pyro should automatically download Python code from the
+server if it returns objects that aren't available on the client.
+<td>0</tr>
+<tr><td><code>PYRO_DNS_URI</code>
+<td>boolean
+<td>Whether symbolic DNS host names should be used in URIs instead of fixed IP addresses.
+<td>0</tr>
+<tr><td><code>PYRO_BC_RETRIES</code>
+<td>number
+<td>How often a broadcast will be retried if no answer has been received. Currently only used by the Name Server locator.
+<td>2</tr>
+<tr><td><code>PYRO_BC_TIMEOUT</code>
+<td>number
+<td>How long Pyro will wait (in seconds) for an answer to a broadcast request. Currently only used by the Name Server locator.
+<td>2</tr>
+<tr><td><code>PYRO_PORT</code>
+<td>number
+<td>The base socket number of the range of socket numbers that the Pyro daemon can use to listen for incoming requests (Pyro method calls).
+<td>7766</tr>
+<tr><td><code>PYRO_PORT_RANGE</code>
+<td>number
+<td>The size of the socket port range. Pyro will try to claim a socket for its Deamons in the socket port range PYRO_PORT to (but not including) PYRO_PORT+PYRO_PORT_RANGE.
+This means that if Pyro already has a Daemon listning on socket N, a new Deamon will claim socket N+1, and so on. You can disable
+this by using a special argument when construction a Daemon (or setting this item to 1).
+<td>100</tr>
+<tr><td><code>PYRO_NS_DEFAULTGROUP</code>
+<td>string
+<td>The default group name in which names are located. <em>This must be an absolute name (starting with the root character).</em>
+<td><code>:Default</code>
+<tr><td><code>PYRO_NS_URIFILE</code>
+<td>string
+<td>The file where the Name Server will write its URI. If it's not an absolute path, it's relative to <code>$PYRO_STORAGE</code>.
+<td><code>Pyro_NS_URI</code>
+<tr><td><code>PYRO_NS_HOSTNAME</code>
+<td>string
+<td>The hostname that is tried to find the NameServer on, when the broadcast lookup mechanism fails.
+<td><i>empty</i></tr>
+<tr><td><code>PYRO_NS_PORT</code>
+<td>number
+<td>The socket number on which the Name Server will listen for incoming requests (Pyro method calls, in fact).
+<td>9090</tr>
+<tr><td><code>PYRO_NS_BC_PORT</code>
+<td>number
+<td>The socket number on which the Name Server will listen for broadcast requests (usually to find the location).
+<td>9090</tr>
+<tr><td><code>PYRO_NS2_HOSTNAME</code>
+<td>string
+<td>Like above, but for the second (paired) Name Server.
+<td><i>empty</i></tr>
+<tr><td><code>PYRO_NS2_PORT</code>
+<td>number
+<td>Like above, but for the second (paired) Name Server.
+<td>9091</tr>
+<tr><td><code>PYRO_NS2_BC_PORT</code>
+<td>number
+<td>Like above, but for the second (paired) Name Server.
+<td>9091</tr>
+<tr><td><code>PYRO_ES_QUEUESIZE</code>
+<td>number
+<td>The size of the message queues per subscriber that the Event Server allocates. Use 0 (zero) for infinite size.
+<td>1000</tr>
+<tr><td><code>PYRO_ES_BLOCKQUEUE</code>
+<td>boolean
+	<td>If true (1), a publisher will block if an event queue on the server is full, 
+		and continue as soon as the queue has some space again. If false (0), 
+		the publisher won't block, but <em>the event is lost</em>.
+<td>1</tr>
+<tr><td><code>PYROSSL_CERTDIR</code>
+<td>string
+<td>The directory where openssl certificates are stored.
+<td>'certs' in the PYRO_STORAGE location.</tr>
+<tr><td><code>PYROSSL_CA_CERT</code>
+<td>string
+<td>Certificate of the Certificate Authority.  Used to check if client and server certificates are valid (that they are signed by the given CA)
+<td>ca.pem</tr>
+<tr><td><code>PYROSSL_SERVER_CERT</code>
+<td>string
+<td>Certificate for server side
+<td>server.pem</tr>
+<tr><td><code>PYROSSL_CLIENT_CERT</code>
+<td>string
+<td>Certificate for client side
+<td>client.pem</tr>
+</table>
+<p>
+There are several ways to change the default settings:
+<ol>
+<li>Change the settings in your code, at runtime. You can change all settings before starting Pyro, and most settings can be changed dynamically during execution too.
+<em>Note that you cannot use this to change <code>Pyro.config.PYRO_STORAGE</code>! See below!</em>
+<br>...<code> Pyro.config.PYRO_PORT = 7000</code><br>
+...<code> Pyro.config.PYRO_TRACELEVEL = 3</code>
+<li>Define environment variables that override the default settings.
+<br>Every configuration item has an equivalent environment variable. If you define this, you can override the default setting for that item. For instance, it might be convenient to have your Pyro programs generate log files and put them in a designated log directory:<br>
+...<code>$ export PYRO_LOGFILE=/var/log/PYRO/logfile</code><br>
+...<code>$ export PYRO_TRACELEVEL=3</code><br>
+(This is for bash - syntax is different for other shells or Windows.)
+<li>Configuration files 
+<br>You can use a configuration file that can contain some small configuration changes or a fully new configuration for all items.
+Pyro checks if the environment variable <code>PYRO_CONFIG_FILE</code> is set. If it isn't set, or set to an empty string, Pyro checks for a <code>Pyro.conf</code> file in the current directory.
+If it exists, Pyro uses it as a configuration file. If it doesn't exist, Pyro uses the default built-in configuration.
+<br>If the environment variable is set, Pyro uses the value as the name for the configuration file. If the configuration file can't be read, a PyroError exception occurs.
+<p>
+The format of the configuration file is very simple. It is a text file, and each line can be empty, a comment, or a configuration item setting.
+A comment starts with '#'. A config item setting is of the format 'ITEM=VALUE'. If Pyro finds an unknown config item, a KeyError exception occurs.
+<p>
+Note that <code>PYRO_CONFIG_FILE</code> is useless inside a configuration file. After initialization, it is set to the absolute path of the configuration file that was used (or the empty string, if no configuration file was used).
+Note that setting <code>PYRO_CONFIG_FILE</code> from within your code is useless too because Pyro is already initialized at that point.
+</ol>
+Environment variables override configuration file settings. Configuration file settings override the built-in default settings.
+<p><code>PYRO_STORAGE</code> is used at initialization time, that is, as soon as a part of the Pyro package is imported in your program.
+You can only change <code>PYRO_STORAGE</code> <em>beforehand</em> by either setting the
+environment variable or making an entry in the configuration file. Changing <code>Pyro.config.PYRO_STORAGE</code>
+in your program leads to unexpected results, because the initilization has already been done
+using the old value. So don't do this, and use one of the two other ways.
+<hr>
+<table border="0" width="100%">
+<tr>
+<td align="left"><a href="2-concepts.html">&lt;previous</a> | <a href="PyroManual.html">contents</a> | <a href="4-usage.html">next&gt;</a>
+<td align="right">Pyro Manual
+</tr>
+</table>
+</body>
+</html>

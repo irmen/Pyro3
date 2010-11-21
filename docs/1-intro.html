@@ -1,0 +1,96 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- $Id: 1-intro.html,v 2.22 2005/02/12 00:28:57 irmen Exp $ -->
+<head>
+   <title>PYRO - Introduction</title>
+</head>
+<body background="backdrop.jpg">
+<table border="0" width="100%">
+<tr>
+<td align="left"><a href="PyroManual.html">&lt;previous</a> | <a href="PyroManual.html">contents</a> | <a href="2-concepts.html">next&gt;</a></td>
+<td align="right">Pyro Manual</td>
+</tr>
+</table>
+<hr>
+
+<!-- ******************* INTRODUCTION ******************** -->
+<h2><u>1. Introduction</u></h2>
+Thank you for choosing the often regarded number one Remote Method Invocation package for Python!
+<p>
+Pyro is an acronym for PYthon Remote Objects. 
+It is an advanced and powerful Distributed Object Technology system written entirely in Python,
+	that is designed to be very easy to use. It resembles Java's Remote Method
+Invocation (<a href="http://java.sun.com/products/jdk/rmi/index.html">RMI</a>).
+It has less similarity to <a href="http://www.corba.org/">CORBA</a> - which
+is a system and language independent Distributed Object Technology and
+has much more to offer than Pyro or RMI. But Pyro is <strong>small</strong>, <strong>simple</strong>, <strong>fun</strong> and <strong>free</strong>!
+For another overview of what Pyro is, see the Pyro page online 
+(<a href="http://pyro.sourceforge.net/">http://pyro.sourceforge.net/</a>). You can also download the package from there.
+<p><strong>Copyright and Disclaimer</strong>
+<br>This software is copyright &copy; by Irmen de Jong. It is subject to change without notice.
+Pyro comes as-is, without warranty and in no event can Irmen de Jong be held liable
+for any problems resulting from this software.
+License: Pyro is released under the MIT license, see the file &quot;<a href="LICENSE">LICENSE</a>&quot;.
+<p><strong>Security Warning</strong>
+<br>
+<em>In the Security chapter is an <a href="9-security.html">important security warning</a> that you absolutely must read!</em>
+<p><strong>To get an idea of how Pyro works, here is a scenario:</strong>
+<ol>
+<li>You write a module '<code>test</code>' containing a class '<code>testclass</code>', which will be accessed remotely.</li>
+<li>The server creates one or more instances of the '<code>testclass</code>', and registers them with the Pyro Name Server.</li>
+<li>The client queries the Name Server for the location of those objects. It gets a Pyro URI (Universal Resource Identifier) for them.</li>
+<li>The client creates proxies for the remote objects. </li>
+<li>Because the proxy mimics the real '<code>testclass</code>', the client can now invoke methods on the remote objects. The proxy will forward the method invocations and return the results, just as if it was the remote object itself.
+Not a single line of network communication code has been written.
+</ol>
+This looks like a big oversimplification, but it isn't!
+<p>To dive directly into the code, have a look at the various Pyro examples in the <code>examples</code> directory (read the <code>Readme.txt</code>). There is much to learn there.
+The easiest example to start with is the &quot;simple&quot; example, it shows how a normal python object is made into a Pyro object and accessed remotely from the client.
+<p><strong>Required Software:</strong>
+<ul>
+<li>This version of Pyro needs at least Python 2.3. However, it is strongly recommended
+to use the latest Python version available (at the time of writing 2.4).
+You may be able to run it on older Python versions (2.1 or 2.2) but it has
+not been tested on those ancient versions. If it doesn't work, try a recent Python
+first before reporting a problem. Thank you.
+<li>There is some compatibility with Jython, but no servers are possible, and problems may occur due to Jython bugs.
+<li>Because basic Pyro does not depend on any third party libraries or extension modules, it runs wherever Python is available, however, the command line
+utility scripts are designed for Windows(NT) and Unix sh. You might 
+experience problems trying to run them on other systems.
+<li>The <code>xnsc</code> tool requires the Tkinter Python extension module, with Tcl/Tk installed.
+<li>The <code>wxnsc</code> tool requires the WxPython extension module with WxWindows.
+</ul>
+<p><strong>Important information Links</strong>
+<ul>
+<li><a href="http://pyro.sourceforge.net">Pyro's home page</a>
+<li><a href="http://www.sourceforge.net/projects/pyro">Pyro Sourceforge project page</a>
+<li><a href="http://www.razorvine.net/python/AboutPyro">Pyro Wiki pages</a>, including the online <a href="http://www.razorvine.net/python/PyroTodoList">Todo list</a>.
+<li>Info about the <a href="http://lists.sourceforge.net/lists/listinfo/pyro-core">Mailing list</a>, which is the best way of getting help.
+</ul>
+<p><strong>Related technology</strong>
+<ul>
+<li>Java Remote Method Invocation (<a href="http://java.sun.com/products/jdk/rmi/index.html">RMI</a>)</li>
+<li>Common Object Request Broker Architecture (<a href="http://www.omg.org/gettingstarted/corbafaq.htm">CORBA</a>)</li>
+<li><a href="http://www.fnorb.org/">Fnorb</a> - a CORBA implementation in Python</li>
+<li>The remoting code included in <a href="http://profigure.sourceforge.net">Profigure</a> by Tom Cocagne
+<li><a href="http://twistedmatrix.com/products/spread">Twisted Spread</a>, part of Twisted.
+</ul>
+<p><strong>Thanks</strong>
+<p>
+I want to thank everybody on the <a href="http://lists.sourceforge.net/lists/listinfo/pyro-core">Pyro mailing list</a>,
+your participation is of great value. And to everybody who contacted me about Pyro, for positive
+remarks, comments, or with problems (it all helps to improve Pyro): Thank You!
+<p>
+If you appreciate my efforts and would like to express your appreciation by a <a href="http://sourceforge.net/donate/index.php?group_id=18837">cash donation</a>,
+that is gladly accepted. But because I'm doing Pyro for fun, I've decided to support the PSF by making all donations trough SourceForge 
+go to the <a href="http://www.python.org/psf/">Python Software Foundation</a>.
+
+<hr>
+<table border="0" width="100%">
+<tr>
+<td align="left"><a href="PyroManual.html">&lt;previous</a> | <a href="PyroManual.html">contents</a> | <a href="2-concepts.html">next&gt;</a></td>
+<td align="right">Pyro Manual</td>
+</tr>
+</table>
+</body>
+</html>
