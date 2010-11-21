@@ -120,7 +120,9 @@
     <li>added 'tlstest' example to check if initTLS behaves as it should</li>
     <li>nameserver URI is no longer cleared when the NS shuts down, if it is running in persistent mode. Restarting the NS in persistent mode will now reuse the old URI.</li>
     <li>fixed threadsafety of PYROLOC uri resolving. (could cause 'unknown object id' exceptions)</li>
-    <li>fixed threadsafety of Pyro SSL adapter.</li> 
+    <li>fixed threadsafety of Pyro SSL adapter.</li>
+    <li>URI objects are no longer cloned inside the Pyro adapter, this avoids unnecessary binds, and threading issues.
+        However you can no longer safely reuse an URI object that you gave to a Pyro proxy (the proxy takes ownership of the object now)</li>  
     </ul>
 
   <div class="nav">
