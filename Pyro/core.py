@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: core.py,v 2.81 2005/05/26 19:40:11 irmen Exp $
+#	$Id: core.py,v 2.104 2007/03/04 13:25:07 irmen Exp $
 #	Pyro Core Library
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -8,11 +8,14 @@
 #
 #############################################################################
 
-import sys, time, sre, os, weakref
+import sys, time, re, os, weakref
+import imp,marshal,new,socket
 import Pyro
 import util, protocol, constants
 from errors import *
 from types import UnboundMethodType, MethodType, BuiltinMethodType, TupleType, StringType, UnicodeType
+if util.supports_multithreading():
+	import threading
 
 Log=util.Log
 
@@ -36,6 +39,8 @@ def _checkInit(pyrotype="client"):
 #
 #############################################################################
 
+_remoteImportLock=util.getLockObject()
+
 class ObjBase:
 	def __init__(self):
 		self.objectGUID=util.getGUID()
@@ -49,7 +54,7 @@ class ObjBase:
 		self.objectGUID = guid
 	def delegateTo(self,delegate):
 		self.delegate=delegate
-	def setDaemon(self, daemon):
+	def setPyroDaemon(self, daemon):
 		# This will usually introduce a cyclic reference between the
 		# object and the daemon. Use a weak ref if available.
 		# NOTE: if you correctly clean up the object (that is, disconnect it from the daemon)
@@ -101,13 +106,17 @@ class ObjBase:
 				return getattr(self.delegate or self,method) (*args,**keywords)
 			except :
 				exc_info = sys.exc_info()
-				if type(exc_info[0]) == StringType :
-					if exc_info[1] == None :
-						raise Exception, exc_info[0], exc_info[2]
+				try:
+					if type(exc_info[0]) == StringType :
+						if exc_info[1] == None :
+							raise Exception, exc_info[0], exc_info[2]
+						else :
+							raise Exception, "%s: %s" % (exc_info[0], exc_info[1]), exc_info[2]
 					else :
-						raise Exception, "%s: %s" % (exc_info[0], exc_info[1]), exc_info[2]
-				else :
-					raise
+						raise
+				finally:
+					del exc_info   # delete frame to allow proper GC
+
 	# remote getattr/setattr support:
 	def _r_ha(self, attr):
 		try:
@@ -123,35 +132,43 @@ class ObjBase:
 		setattr(self.delegate or self, attr, value)
 	# remote code downloading support (server downloads from client):
 	def remote_supply_code(self, name, module, sourceaddr):
+		# XXX this is nasty code, and also duplicated in protocol.py _retrieveCode()
 		if Pyro.config.PYRO_MOBILE_CODE and self.codeValidator(name,module,sourceaddr):
-			import imp,marshal,new
-			Log.msg('ObjBase','loading supplied code: ',name,'from',str(sourceaddr))
-			name=name.split('.')
-			# make the module hierarchy and add all names to sys.modules
-			path=''
-			mod=new.module("pyro-agent-context")
-
-			for m in name:
-				path+='.'+m
-				# use already loaded modules instead of overwriting them
-				real_path = path[1:]
-				if sys.modules.has_key(real_path):
-					mod = sys.modules[real_path]
+			try:
+				_remoteImportLock.acquire()   # threadsafe imports
+				if name in sys.modules and getattr(sys.modules[name],'_PYRO_bytecode',None):
+					# already have this module, don't import again
+					# we checked for the _PYRO_bytecode attribute because that is only
+					# present when all loading code below completed successfully
+					return
+				Log.msg('ObjBase','loading supplied code: ',name,'from',str(sourceaddr))
+				if module[0:4]!=imp.get_magic():
+					# compile source code
+					code=compile(module,'<downloaded>','exec')
 				else:
-					setattr(mod,m,new.module(path[1:]))
-					mod=getattr(mod,m)
-					sys.modules[path[1:]]=mod
-				
-			if module[0:4]!=imp.get_magic():
-				# compile source code
-				code=compile(module,'<downloaded>','exec')
-			else:
-				# read bytecode from the client
-				code=marshal.loads(module[8:])
-			# finally, execute the module code in the right module.
-			exec code in mod.__dict__
-			# store the bytecode for possible later reference
-			mod.__dict__['_PYRO_bytecode'] = module
+					# read bytecode from the client
+					code=marshal.loads(module[8:])
+
+				# make the module hierarchy and add all names to sys.modules
+				name=name.split('.')
+				path=''
+				mod=new.module("pyro-agent-context")
+				for m in name:
+					path+='.'+m
+					# use already loaded modules instead of overwriting them
+					real_path = path[1:]
+					if sys.modules.has_key(real_path):
+						mod = sys.modules[real_path]
+					else:
+						setattr(mod,m,new.module(path[1:]))
+						mod=getattr(mod,m)
+						sys.modules[path[1:]]=mod
+				# execute the module code in the right module.
+				exec code in mod.__dict__
+				# store the bytecode for possible later reference if we need to pass it on
+				mod.__dict__['_PYRO_bytecode'] = module
+			finally:
+				_remoteImportLock.release()
 		else:
 			Log.warn('ObjBase','attempt to supply code denied: ',name,'from',str(sourceaddr))
 			raise PyroError('attempt to supply code denied')
@@ -159,9 +176,9 @@ class ObjBase:
 	# remote code retrieve support (client retrieves from server):
 	def remote_retrieve_code(self, name):
 		# XXX codeValidator: can we somehow get the client's address it is sent to?
+		# XXX this code is ugly. And duplicated in protocol.py remoteInvocation.
 		if Pyro.config.PYRO_MOBILE_CODE and self.codeValidator(name,None,None):
 			Log.msg("ObjBase","supplying code: ",name)
-			import new
 			try:
 				importmodule=new.module("pyro-server-import")
 				try:
@@ -171,14 +188,15 @@ class ObjBase:
 					raise PyroError("Client wanted a non-existing module", name)
 				m=eval("importmodule."+name)
 				# try to load the module's compiled source, or the real .py source if that fails.
+				# note that the source code (.py) is opened with universal newline mode
 				(filebase,ext)=os.path.splitext(m.__file__)
 				if ext.startswith(".PY"):
-					exts = ( ".PYO", ".PYC", ".PY" )	# uppercase
+					exts = ( (".PYO","rb"), (".PYC","rb"), (".PY","rU") )	# uppercase
 				else:
-					exts = ( ".pyo", ".pyc", ".py" )	# lowercase
-				for ext in exts:
+					exts = ( (".pyo","rb"), (".pyc","rb"), (".py","rU") )	# lowercase
+				for ext,mode in exts:
 					try:
-						m=open(filebase+ext, "rb").read()
+						m=open(filebase+ext, mode).read()
 						return m  # supply the module to the client!
 					except:
 						pass
@@ -306,7 +324,7 @@ class PyroURI:
 			uri=processStringURI(arg)
 			self.init(uri.address,uri.objectID,uri.port,uri.protocol)
 			return
-		x=sre.match(r'(?P<protocol>[^\s:/]+)://(?P<hostname>[^\s:]+):?(?P<port>\d+)?/(?P<id>\S*)',arg)
+		x=re.match(r'(?P<protocol>[^\s:/]+)://(?P<hostname>[^\s:]+):?(?P<port>\d+)?/(?P<id>\S*)',arg)
 		if x:
 			self.protocol=x.group('protocol')
 			self.address=x.group('hostname')
@@ -333,22 +351,22 @@ class PyroURI:
 #
 def processStringURI(URI):
 	# PYRONAME(SSL)://[hostname[:port]/]objectname
-	x=sre.match(r'(?P<protocol>PYRONAME|PYRONAMESSL)://(((?P<hostname>[^\s:]+):(?P<port>\d+)/)|((?P<onlyhostname>[^\s:]+)/))?(?P<name>\S*)',URI)
+	x=re.match(r'(?P<protocol>PYRONAME|PYRONAMESSL)://(((?P<hostname>[^\s:]+):(?P<port>\d+)/)|((?P<onlyhostname>[^\s:]+)/))?(?P<name>\S*)',URI)
 	if x:
-		import naming
 		protocol=x.group('protocol')
 		if protocol=="PYRONAMESSL":
 			raise ProtocolError("NOT SUPPORTED YET: "+protocol) # XXX obviously, this should be implemented
 		hostname=x.group('hostname') or x.group('onlyhostname')
 		port=x.group('port')
 		name=x.group('name')
+		import naming
 		loc=naming.NameServerLocator()
 		if port:
 			port=int(port)
 		NS=loc.getNS(host=hostname,port=port)
 		return NS.resolve(name)
 	# PYROLOC(SSL)://hostname[:port]/objectname
-	x=sre.match(r'(?P<protocol>PYROLOC|PYROLOCSSL)://(?P<hostname>[^\s:]+):?(?P<port>\d+)?/(?P<name>\S*)',URI)
+	x=re.match(r'(?P<protocol>PYROLOC|PYROLOCSSL)://(?P<hostname>[^\s:]+):?(?P<port>\d+)?/(?P<name>\S*)',URI)
 	if x:
 		protocol=x.group('protocol')
 		hostname=x.group('hostname')
@@ -403,6 +421,10 @@ class DynamicProxy:
 		# Delay adapter binding to enable transporting of proxies.
 		# We just create an adapter, and don't connect it...
 		self.adapter = protocol.getProtocolAdapter(self.URI.protocol)
+		if util.supports_multithreading():
+			self.ownerThreadId = id(threading.currentThread())
+		else:
+			self.ownerThreadId = None
 		# ---- don't forget to register local vars with DynamicProxyWithAttrs, see below
 	def __del__(self):
 		if 'adapter' in self.__dict__.keys():
@@ -417,12 +439,22 @@ class DynamicProxy:
 		self.adapter.setOneway(methods)
 	def _setTimeout(self,timeout):
 		self.adapter.setTimeout(timeout)
+	def _transferThread(self, newOwnerThread=None):
+		if newOwnerThread is not None:
+			self.ownerThreadId = id(newOwnerThread)
+		elif util.supports_multithreading():
+			self.ownerThreadId = id(threading.currentThread())
+		else:
+			self.ownerThreadId = None
 	def _release(self):
 		if self.adapter:
 			self.adapter.release()
 	def __copy__(self):			# create copy of current proxy object
-		c=DynamicProxy(self.URI)
-		return c
+		proxyCopy = DynamicProxy(self.URI)
+		proxyCopy.adapter.setIdentification(self.adapter.getIdentification(), munge=False)   # copy identification info
+		return proxyCopy
+	def __deepcopy__(self, arg):
+		raise PyroError("cannot deepcopy a proxy")
 	def __getattr__(self, name):
 		if name=="__getinitargs__":			# allows it to be safely pickled
 			raise AttributeError()
@@ -449,7 +481,11 @@ class DynamicProxy:
 		return None
 
 	def _invokePYRO(self, name, vargs, kargs):
+		if util.supports_multithreading():
+			if self.adapter.connected() and id(threading.currentThread()) != self.ownerThreadId:
+				raise PyroError("not allowed to share proxy among multiple threads")
 		if not self.adapter.connected():
+			self._transferThread(None)  # we claim the proxy because we connect it first
 			self.adapter.bindToURI(self.URI)
 		return self.adapter.remoteInvocation(name, constants.RIF_VarargsAndKeywords, vargs, kargs)
 
@@ -458,19 +494,18 @@ class DynamicProxy:
 		# for pickling, return a non-connected copy of ourselves:
 		copy = self.__copy__()
 		copy._release()
+		del copy.ownerThreadId    # will be reset on the receiving side
 		return copy.__dict__
-		# this used to disconnect ourselves, but that is inefficient:
-		# self._release()		# release socket to be able to pickle this object
-		# return self.__dict__
 	def __setstate__(self, args):
 		# this appears to be necessary otherwise pickle won't work
 		self.__dict__=args
+		self._transferThread()		# claim the proxy for ourselves
 
 	
 class DynamicProxyWithAttrs(DynamicProxy):
 	def __init__(self, URI):
 		# first set the list of 'local' attrs for __setattr__
-		self.__dict__["_local_attrs"] = ("_local_attrs","URI", "objectID", "adapter", "_name", "_attr_cache")
+		self.__dict__["_local_attrs"] = ("_local_attrs","URI", "objectID", "adapter", "ownerThreadId", "_name", "_attr_cache")
 		self._attr_cache = {}
 		DynamicProxy.__init__(self, URI)
 	def _r_ga(self, attr, value=0):
@@ -527,7 +562,7 @@ class DaemonServant(ObjBase):
 		
 # The daemon itself:
 class Daemon(protocol.TCPServer, ObjBase):
-	def __init__(self,prtcol='PYRO',host='',port=0,norange=0,publishhost=None):
+	def __init__(self,prtcol='PYRO',host=None,port=0,norange=0,publishhost=None):
 		ObjBase.__init__(self)
 		self.NameServer = None
 		self.connections=[]
@@ -537,6 +572,11 @@ class Daemon(protocol.TCPServer, ObjBase):
 		self.persistentConnectedObjs=[] # guids
 		self.transientsCleanupAge=0
 		self.transientsMutex=util.getLockObject()
+		self.nscallMutex=util.getLockObject()
+		if host is None:
+			host=Pyro.config.PYRO_HOST
+		if publishhost is None:
+			publishhost=Pyro.config.PYRO_PUBLISHHOST
 		if port:
 			self.port = port
 		else:
@@ -570,20 +610,23 @@ class Daemon(protocol.TCPServer, ObjBase):
 	def __disconnectObjects(self):
 		# server shutting down, unregister all known objects in the NS
 		if self.NameServer and constants:
-			if constants.INTERNAL_DAEMON_GUID in self.implementations:
-				del self.implementations[constants.INTERNAL_DAEMON_GUID]
-			if self.implementations:
-				Log.warn('Daemon','Shutting down but there are still',len(self.implementations),'objects connected - disconnecting them')
-			for guid in self.implementations.keys():
-				if guid not in self.persistentConnectedObjs:
-					(obj,name)=self.implementations[guid]
-					if name:
-						try:
-							self.NameServer.unregister(name)
-						except Exception,x:
-							Log.warn('Daemon','Error while unregistering object during shutdown:',x)
-			self.implementations={}
-		
+			self.nscallMutex.acquire()
+			try:
+				if constants.INTERNAL_DAEMON_GUID in self.implementations:
+					del self.implementations[constants.INTERNAL_DAEMON_GUID]
+				if self.implementations:
+					Log.warn('Daemon','Shutting down but there are still',len(self.implementations),'objects connected - disconnecting them')
+				for guid in self.implementations.keys():
+					if guid not in self.persistentConnectedObjs:
+						(obj,name)=self.implementations[guid]
+						if name:
+							try:
+								self.NameServer.unregister(name)
+							except Exception,x:
+								Log.warn('Daemon','Error while unregistering object during shutdown:',x)
+				self.implementations={}
+			finally:
+				self.nscallMutex.release()
 
 	def __del__(self):
 		self.__disconnectObjects() # unregister objects
@@ -601,7 +644,6 @@ class Daemon(protocol.TCPServer, ObjBase):
 		# Checks if hostname is sensible. Returns None if it is, otherwise a message
 		# telling what's wrong if it isn't too serious. If things are really bad,
 		# expect an exception to be raised. Things are logged too.
-		import socket
 		if not self.hostname:
 			Log.error("Daemon","no hostname known")
 			raise socket.error("no hostname known for daemon")
@@ -610,10 +652,10 @@ class Daemon(protocol.TCPServer, ObjBase):
 			if ip is None:
 				Log.error("Daemon","no IP address known")
 				raise socket.error("no IP address known for daemon")
-			if ip!="127.0.0.1":
+			if not ip.startswith("127.0."):
 				return None  # this is good!
-		# 127.0.0.1 or 'localhost' is a warning situation!
-		msg="daemon bound on hostname that resolves to loopback address 127.0.0.1"
+		# 127.0.x.x or 'localhost' is a warning situation!
+		msg="daemon bound on hostname that resolves to loopback address 127.0.x.x"
 		Log.warn("Daemon",msg)
 		Log.warn("Daemon","hostname="+self.hostname)
 		return msg
@@ -630,8 +672,7 @@ class Daemon(protocol.TCPServer, ObjBase):
 		self.transientsCleanupAge=secs
 		if self.threaded:
 			Log.msg('Daemon','creating Grim Reaper thread for transients, timeout=',secs)
-			from threading import Thread
-			reaper=Thread(target=self._grimReaper)
+			reaper=threading.Thread(target=self._grimReaper)
 			reaper.setDaemon(1)   # thread must exit at program termination.
 			reaper.start()
 	def _grimReaper(self):
@@ -651,24 +692,28 @@ class Daemon(protocol.TCPServer, ObjBase):
 		# when a persistent entry is found in the NS, that URI is
 		# used instead of the supplied one, if the address matches.
 		if name and self.NameServer:
+			self.nscallMutex.acquire()
 			try:
-				newURI = PyroURI(self.hostname, object.GUID(), prtcol=self.protocol, port=self.port)
-				URI=self.NameServer.resolve(name)
-				if (URI.protocol,URI.address,URI.port)==(newURI.protocol,newURI.address,newURI.port):
-					# reuse the previous object ID
-					object.setGUID(URI.objectID)
-					# enter the (object,name) in the known impl. dictionary
-					self.implementations[object.GUID()]=(object,name)
-					self.persistentConnectedObjs.append(object.GUID())
-					object.setDaemon(self)
-					return URI
-				else:
-					# name exists, but address etc. is wrong. Remove it.
-					# then continue so it wil be re-registered.
-					try: self.NameServer.unregister(name)
-					except NamingError: pass
-			except NamingError:
-				pass
+				try:
+					newURI = PyroURI(self.hostname, object.GUID(), prtcol=self.protocol, port=self.port)
+					URI=self.NameServer.resolve(name)
+					if (URI.protocol,URI.address,URI.port)==(newURI.protocol,newURI.address,newURI.port):
+						# reuse the previous object ID
+						object.setGUID(URI.objectID)
+						# enter the (object,name) in the known impl. dictionary
+						self.implementations[object.GUID()]=(object,name)
+						self.persistentConnectedObjs.append(object.GUID())
+						object.setPyroDaemon(self)
+						return URI
+					else:
+						# name exists, but address etc. is wrong. Remove it.
+						# then continue so it wil be re-registered.
+						try: self.NameServer.unregister(name)
+						except NamingError: pass
+				except NamingError:
+					pass
+			finally:
+				self.nscallMutex.release()
 		# Register normally.		
 		self.persistentConnectedObjs.append(object.GUID())
 		return self.connect(object, name)
@@ -677,27 +722,35 @@ class Daemon(protocol.TCPServer, ObjBase):
 		URI = PyroURI(self.hostname, object.GUID(), prtcol=self.protocol, port=self.port)
 		# if not transient, register the object with the NS
 		if name:
-			if self.NameServer:
-				self.NameServer.register(name, URI)
-			else:
-				Log.warn('Daemon','connecting object without name server specified:',name)
+			self.nscallMutex.acquire()
+			try:
+				if self.NameServer:
+					self.NameServer.register(name, URI)
+				else:
+					Log.warn('Daemon','connecting object without name server specified:',name)
+			finally:
+				self.nscallMutex.release()
 		# enter the (object,name) in the known implementations dictionary
 		self.implementations[object.GUID()]=(object,name)
-		object.setDaemon(self)
+		object.setPyroDaemon(self)
 		return URI
 
 	def disconnect(self,object):
 		try:
 			if self.NameServer and self.implementations[object.GUID()][1]:
-				# only unregister with NS if it had a name (was not transient)
-				self.NameServer.unregister(self.implementations[object.GUID()][1])
+				self.nscallMutex.acquire()
+				try:
+					# only unregister with NS if it had a name (was not transient)
+					self.NameServer.unregister(self.implementations[object.GUID()][1])
+				finally:
+					self.nscallMutex.release()
 			del self.implementations[object.GUID()]
 			if object.GUID() in self.persistentConnectedObjs:
 				self.persistentConnectedObjs.remove(object.GUID())
 			# XXX Clean up connections/threads to this object?
 			#     Can't be done because thread/socket is not associated with single object 
 		finally:
-			object.setDaemon(None)
+			object.setPyroDaemon(None)
 
 	def getRegistered(self):
 		r={}
@@ -754,7 +807,7 @@ class Daemon(protocol.TCPServer, ObjBase):
 					self.adapter.returnException(conn,exc_value,0,exclist) # don't shutdown connection
 
 		finally:
-			# clean up circular references to traceback info
+			# clean up circular references to traceback info to allow proper GC
 			del exc_type, exc_value, exc_trb
 
 	def getAdapter(self):

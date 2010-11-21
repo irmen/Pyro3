@@ -17,6 +17,7 @@ allinone_ownloop.py: uses a CUSTOM EVENT LOOP to run everything.
 
 
 NOTE: FOR BOTH EXAMPLES, THREADING MUST BE AVAILABLE.
+      Also, no Name Server must be running.
 
 NOTE2: this example doesn't show what a good solution might be to
 run everything in a monolithic application!!! 

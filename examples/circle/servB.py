@@ -2,11 +2,16 @@
 import Pyro.naming
 import Pyro.core
 import chain
+from Pyro.errors import PyroError,NamingError
 
 Pyro.core.initServer()
 
 daemon = Pyro.core.Daemon()
 ns = Pyro.naming.NameServerLocator().getNS()
+try:
+    ns.createGroup(":test")
+except NamingError:
+    pass
 daemon.useNameServer(ns)
 
 objName='B'

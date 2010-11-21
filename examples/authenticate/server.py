@@ -20,6 +20,11 @@ print 'Searching Naming Service...'
 locator = Pyro.naming.NameServerLocator(identification='s3cr3t') # note the ident string
 ns = locator.getNS()
 
+try:
+    ns.createGroup(":test")
+except NamingError:
+    pass
+
 daemon = Pyro.core.Daemon()
 daemon.useNameServer(ns)
 daemon.setAllowedIdentifications(['s3cr3t'])

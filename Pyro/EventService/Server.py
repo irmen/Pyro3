@@ -1,6 +1,6 @@
 #############################################################################
 #  
-#	$Id: Server.py,v 2.33 2004/02/05 00:42:35 irmen Exp $
+#	$Id: Server.py,v 2.37 2007/03/04 01:45:50 irmen Exp $
 #	Event Service daemon and server classes
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -8,7 +8,7 @@
 #
 #############################################################################
 
-import time, types, re, sys
+import time, types, re, sys, traceback
 import Pyro.core, Pyro.naming, Pyro.util, Pyro.constants
 from Pyro.errors import *
 import Queue
@@ -32,6 +32,8 @@ class Subscriber(Thread):
 	def __init__(self, remote):
 		Thread.__init__(self)
 		self.remote=remote
+		# transfer control to the current thread
+		self.remote._transferThread(self)
 		# set the callback method to ONEWAY mode:
 		self.remote._setOneway("event")
 		self.queue=Queue.Queue(Pyro.config.PYRO_ES_QUEUESIZE)
@@ -232,7 +234,6 @@ class EventServiceStarter:
 				self.shutdown(es)
 			except:
 				try:
-					import traceback
 					(exc_type, exc_value, exc_trb) = sys.exc_info()
 					out = ''.join(traceback.format_exception(exc_type, exc_value, exc_trb)[-5:])
 					Log.error('ES daemon', 'Unexpected exception, type',exc_type,
@@ -242,7 +243,7 @@ class EventServiceStarter:
 					print out
 					print '*** Resuming operations...'
 				finally:	
-					del exc_type, exc_value, exc_trb
+					del exc_type, exc_value, exc_trb    # delete refs to allow proper GC
 
 			Log.msg('ES daemon','Shut down gracefully.')
 			print 'Event Server gracefully stopped.'
@@ -287,7 +288,7 @@ def start(argv):
 		print '             also used to connect to other Pyro services'
 		print '        -h = print this help'
 		raise SystemExit
-	hostname = Args.getOpt('n','')
+	hostname = Args.getOpt('n',None)
 	port = Args.getOpt('p',None)
 	ident = Args.getOpt('i',None)
 	if port:

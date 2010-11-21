@@ -1,8 +1,5 @@
-import agent.base   # use fully qualifed module name. "import base" doesn't work with mobile code.
-
-class ShoppingAgent(agent.base.Agent):
+class ShoppingAgent:
     def __init__(self, name):
-        agent.base.Agent.__init__(self)
         self.name=name
         self.visited=[]
     def result(self):

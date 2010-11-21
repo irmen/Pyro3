@@ -14,3 +14,6 @@ HOW TO START THIS:
 Have a look at the "example" chapter in the manual to see other
 very simple Pyro examples.
 
+
+NOTE : the client_thread.py script shows what happens when you share
+a Pyro proxy among different threads.

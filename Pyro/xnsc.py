@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: xnsc.py,v 2.14 2005/02/12 23:45:29 irmen Exp $
+#	$Id: xnsc.py,v 2.15 2006/11/20 18:21:39 irmen Exp $
 #	Pyro Name Server Control Tool with GUI 
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -73,6 +73,15 @@ class xnscFrame:
 			self.disable_buttons()
 			self.outputln('*** Connection with NS lost - reconnect')
 	
+	def printError(self, msg, exc):
+		line="## %s: " % msg
+		if isinstance(exc.args, (list, tuple)):
+			line+="; ".join(exc.args[:-1])
+		else:
+			line+=exc.args
+		line+=" ##"
+		self.outputln(line)
+	
 	def b_list(self,event=None):
 		names = self.entry_arg.get().split()
 		try:
@@ -83,7 +92,7 @@ class xnscFrame:
 					try:
 						self.printList(self.NS.list(n))
 					except NamingError,x:
-						self.outputln('## can\'t list: '+str(x)+' ##')
+						self.printError("can't list",x)
 			else:
 				self.outputln('*** List default group:')
 				self.printList(self.NS.list(None))
@@ -118,8 +127,8 @@ class xnscFrame:
 				self.NS.register(name,uri)
 				uri=core.PyroURI(uri)
 				self.outputln('  '+name+'  -->  '+str(uri))
-			except NamingError,arg:
-				self.outputln('  Error from NS: '+str(arg))
+			except NamingError,x:
+				self.printError("Error from NS", x)
 			except: 
 				self.handle_comm_error('register')
 		except ValueError:
@@ -135,7 +144,7 @@ class xnscFrame:
 				uri=self.NS.resolve(name)
 				self.outputln('  '+name+'  -->  '+str(uri))
 			except NamingError,x:
-				self.outputln('  '+name+'  -->  ## can\'t resolve: '+str(x)+' ##')
+				self.printError("can't resolve '"+name+"'", x)
 			except: 
 				self.handle_comm_error('resolve')
 	
@@ -149,7 +158,7 @@ class xnscFrame:
 				self.NS.unregister(name)
 				self.outputln('*** removed: '+name)
 			except NamingError,x:
-				self.outputln('  Can\'t remove '+name+' because '+str(x))
+				self.printError("Can't remove '"+name+"'", x)
 			except: 
 				self.handle_comm_error('remove')
 	
@@ -168,8 +177,8 @@ class xnscFrame:
 			try:
 				self.NS.createGroup(name)
 				self.outputln('*** group created: '+name)
-			except: 
-				self.handle_comm_error('creategroup')
+			except Exception,x:
+				self.printError("Can't create group",x)
 	
 	def b_deletegroup(self,event=None):
 		name=self.entry_arg.get()
@@ -179,8 +188,8 @@ class xnscFrame:
 			try:
 				self.NS.deleteGroup(name)
 				self.outputln('*** group deleted: '+name)
-			except: 
-				self.handle_comm_error('deletegroup')
+			except Exception,x:
+				self.printError("Can't delete group",x)
 
 	def b_showmeta(self,event=None):
 		name=self.NS.fullName(self.entry_arg.get())
@@ -189,7 +198,7 @@ class xnscFrame:
 			self.outputln("system meta info : "+str(self.NS._getSystemMeta(name)))
 			self.outputln("  user meta info : "+str(self.NS.getMeta(name)))
 		except NamingError,x:
-			self.outputln('  -->  ## can\'t get meta info: '+str(x)+' ##')
+			self.printError("Can't get Meta info",x)
 		except: 
 			self.handle_comm_error('showmeta')
 		
@@ -200,8 +209,8 @@ class xnscFrame:
 			try:
 				self.NS.setMeta(name,meta)
 				self.outputln('  '+name+'  META='+meta)
-			except NamingError,arg:
-				self.outputln('  Error from NS: '+str(arg))
+			except NamingError,x:
+				self.printError("Error from NS", x)
 			except: 
 				self.handle_comm_error('setmeta')
 		except ValueError:
@@ -212,7 +221,7 @@ class xnscFrame:
 		try:
 			self.NS.resync()
 		except NamingError,x:
-			self.outputln('  -->  ## can\'t resync: '+str(x)+' ##')
+			self.printError("Can't resync",x)
 		except: 
 			self.handle_comm_error('resync')
 

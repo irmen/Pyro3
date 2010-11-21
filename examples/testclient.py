@@ -1,5 +1,7 @@
 #
 #	Test client utility startup code
+#	Kind of verbose; all this could be done much simpler
+#	by using PYRONAME:// or something, but it shows what is happening.
 #
 
 import sys
@@ -21,12 +23,12 @@ def getproxy(objName, withAttrs=0):
 	print 'Naming Service found at',ns.URI.address,'('+(Pyro.protocol.getHostname(ns.URI.address) or '??')+') port',ns.URI.port
 
 	# resolve the Pyro object
-	print 'binding to object'
+	print 'asking for object'
 	try:
 		URI=ns.resolve(objName)
 		print 'URI:',URI
 	except Pyro.core.PyroError,x:
-		print 'Couldn\'t bind object, nameserver says:',x
+		print 'Couldn\'t locate object, nameserver says:',x
 		raise SystemExit
 
 	# create a proxy for the Pyro object, and return that

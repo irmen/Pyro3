@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys,os
+import sys,os,time
 import Pyro.protocol
 
 sys.path.insert(0,os.pardir)		# to find testclient.py
@@ -28,7 +28,6 @@ def fe(): void=object.oneway('stringetje',432423434)
 def ff(): void=object.mapping( {"aap":42, "noot": 99, "mies": 987654} )
 
 funcs = (f1,f2,f3,f4,f5,f6,f7,f8,f9,fa,fb,fc,fd,fe,ff)
-import time
 
 print '-------- BENCHMARK REMOTE OBJECT ---------'
 print 'Pay attention to the "fe" test -- this is a Oneway call and is *fast*'
@@ -36,6 +35,7 @@ begin = time.time()
 iters = 500
 for f in funcs:
 	print iters,'times',f.__name__,
+	sys.stdout.flush()
 	voor = time.time()
 	for i in range(iters):
 		f()

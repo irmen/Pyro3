@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: protocol.py,v 2.77 2005/05/26 21:25:17 irmen Exp $
+#	$Id: protocol.py,v 2.94 2007/03/04 01:45:49 irmen Exp $
 #	Pyro Protocol Adapters
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -8,12 +8,13 @@
 #
 #############################################################################
 
-import socket, struct, os, time, sys, md5, hmac
+import socket, struct, os, time, sys, md5, hmac, types, random
+import imp, marshal, new, __builtin__
 import Pyro
 import util, constants
 
 if os.name!='java':		# Jython has no select module
-	import select
+	import select, errno
 
 from errors import *
 from errors import _InternalNoModuleError
@@ -58,12 +59,19 @@ def getIPAddress(host=None):
 
 # process optional timeout on socket.
 # XXX replace this with python's native socket timeouts. M2Crypto (SSL) needs special care...
-def _sock_timeout(sock, timeout):
+def _sock_timeout_send(sock, timeout):
 	ssl_select_okay=not hasattr(sock,'pending') or sock.pending()==0
 	if timeout and ssl_select_okay:
-		r,w,e=select.select([],[sock],[],timeout)
+		r,w,e=safe_select([],[sock],[],timeout)
 		if not w:
 			raise TimeoutError('connection timeout sending')
+
+def _sock_timeout_recv(sock, timeout):
+	ssl_select_okay=not hasattr(sock,'pending') or sock.pending()==0
+	if timeout and ssl_select_okay:
+		r,w,e=safe_select([sock],[],[],timeout)
+		if not r:
+			raise TimeoutError('connection timeout receiving')
 
 # Receive a precise number of bytes from a socket. Raises the
 # ConnectionClosedError if  that number of bytes was not available.
@@ -89,16 +97,16 @@ def sock_recvmsg(sock, size, timeout=0):
 # select the optimal recv() implementation
 if hasattr(socket.socket, "recvall"):   # Irmen's custom socket module extension, see Python patch #1103213
 	def _recv_msg(sock,size,timeout):
-		_sock_timeout(sock,timeout)
+		_sock_timeout_recv(sock,timeout)
 		chunk=sock.recvall(size)
 		if len(chunk)!=size:
 			err=ConnectionClosedError('connection lost')
 			err.partialMsg=chunk    # store the message that was received until now
 			raise err
 		return chunk
-elif hasattr(socket,"MSG_WAITALL"):
+elif hasattr(socket,"MSG_WAITALL") and not Pyro.config.PYRO_BROKEN_MSGWAITALL:
 	def _recv_msg(sock,size,timeout):
-		_sock_timeout(sock,timeout)
+		_sock_timeout_recv(sock,timeout)
 		try:		
 			chunk=sock.recv(size, socket.MSG_WAITALL)   # receive all data in one call
 		except TypeError:
@@ -113,14 +121,14 @@ elif hasattr(socket,"MSG_WAITALL"):
 			return chunk
 else:
 	def _recv_msg(sock,size,timeout):
-		_sock_timeout(sock, timeout)
+		_sock_timeout_recv(sock, timeout)
 		return __recv_msg_compat(sock,size,timeout)
 
 def __recv_msg_compat(sock,size,timeout):   # compatibility implementation for non-MSG_WAITALL / M2Crypto
 	msglen=0
 	msglist=[]
 	# Receive chunks of max. 60kb size:
-	# (rather arbitrary limit, but it avoids memory/buffer problems on certain OSes -- VAX, Windows)
+	# (rather arbitrary limit, but it avoids memory/buffer problems on certain OSes -- VAX/VMS, Windows)
 	while msglen<size:
 		chunk=sock.recv(min(60000,size-msglen))
 		if not chunk:
@@ -139,7 +147,7 @@ def __recv_msg_compat(sock,size,timeout):   # compatibility implementation for n
 
 def sock_sendmsg(sock,msg,timeout=0):
 	try:
-		_sock_timeout(sock,timeout)
+		_sock_timeout_send(sock,timeout)
 		sock.sendall(msg)
 	except socket.error:
 		raise ConnectionClosedError('connection lost')
@@ -147,7 +155,7 @@ def sock_sendmsg(sock,msg,timeout=0):
 
 # set socket option to try to re-use a server port if possible
 def set_reuse_addr(sock):
-	if os.name not in ('nt','dos','ce'):
+	if os.name not in ('nt','dos','ce') and sys.platform!='cygwin':
 		# only do this on a non-windows platform. Windows screws things up with REUSEADDR...
 		try:
 			sock.setsockopt ( socket.SOL_SOCKET, socket.SO_REUSEADDR,
@@ -171,7 +179,10 @@ def set_sock_keepalive(sock):
 PFLG_COMPRESSED = 0x01		# protocol flag: compressed body
 PFLG_CHECKSUM =   0x02		# protocol flag: checksum body
 PFLG_XMLPICKLE_GNOSIS =  0x04		# protocol flag: used xml pickling (Gnosis)
-PFLG_XMLPICKLE_PYXML  =  0x08		# protocol flag: used xml pickling (PyXML)
+
+
+_agentImportLock=util.getLockObject()
+_remoteImportRLock=util.getRLockObject()
 
 class PYROAdapter:
 	headerFmt = '!4sHHlHl'	# version 4 header (id, ver, hsiz,bsiz,pflags,crc)
@@ -298,8 +309,6 @@ class PYROAdapter:
 			pflgs|=PFLG_CHECKSUM
 		if Pyro.config.PYRO_XML_PICKLE=='gnosis':
 			pflgs|=PFLG_XMLPICKLE_GNOSIS
-		elif Pyro.config.PYRO_XML_PICKLE=='pyxml':
-			pflgs|=PFLG_XMLPICKLE_PYXML
 		return struct.pack(self.headerFmt, self.headerID, self.version, self.headerSize, len(body), pflgs, crc) + body
 
 	def setOneway(self, methods):
@@ -319,57 +328,69 @@ class PYROAdapter:
 
 	# Retrieve code from the remote peer. Works recursively.
 	def _retrieveCode(self, mname, level):
-		import imp, marshal, new
-
-		# Call the special method on the server to retrieve the code.
-		# No need for complex exception stuff like when the server needs
-		# code from the client (see handleInvocation): because the server
-		# is a Pyro object we can actually *call* it :-)
-		module = self.remoteInvocation("remote_retrieve_code",0,mname)
-		mname = mname.split('.')
-		path = ''
-		mod = new.module("pyro-server-context")
-		for m in mname:
-			path += '.' + m
-			# use already loaded modules instead of overwriting them
-			real_path = path[1:]
-			if sys.modules.has_key(real_path):
-				mod = sys.modules[real_path]
-			else:
-				setattr(mod, m, new.module(real_path))
-				mod = getattr(mod, m)
-				sys.modules[real_path] = mod
-				
-		if module[0:4] != imp.get_magic():
-			code = compile(module, "<downloaded>", "exec")
-		else:
-			code = marshal.loads(module[8:])
- 
+		# XXX this is nasty code, and also duplicated in core.py remote_supply_code()
+		if mname in sys.modules:
+			# module is already loaded, do nothing
+			# XXX how can we be sure if the module is "complete"?
+			# XXX because things might go wrong during the loading code below?
+			return
 		try:
-			loaded = 0
-			# XXX probably want maxtries here...
-			while not loaded:
-				import __builtin__
-				importer = agent_import(__builtin__.__import__)
-				__builtin__.__import__ = importer
- 
-				try:
-					exec code in mod.__dict__
-					loaded = 1
-				except ImportError:
-					mname = importer.name
- 
-					if importer is not None:
-						__builtin__.__import__ = importer.orig_import
-						importer = None
- 
-					# XXX probably want maxrecursion here...
-					self._retrieveCode(mname, level+1)
- 
+			_remoteImportRLock.acquire()	
+			# Called by the client-side to obtain code from the server-side.
+			# Call the special method on the server to retrieve the code.
+			# No need for complex exception stuff like when the server needs
+			# code from the client (see handleInvocation): because the server
+			# is a Pyro object we can actually *call* it :-)
+			module = self.remoteInvocation("remote_retrieve_code",0,mname)
+			mname = mname.split('.')
+			path = ''
+			mod = new.module("pyro-server-context")
+			for m in mname:
+				path += '.' + m
+				# use already loaded modules instead of overwriting them
+				real_path = path[1:]
+				if sys.modules.has_key(real_path):
+					mod = sys.modules[real_path]
+				else:
+					setattr(mod, m, new.module(real_path))
+					mod = getattr(mod, m)
+					sys.modules[real_path] = mod
+					
+			if module[0:4] != imp.get_magic():
+				code = compile(module, "<downloaded>", "exec")
+			else:
+				code = marshal.loads(module[8:])
+	 
+			importer=None
+			try:
+				loaded = 0
+				# XXX probably want maxtries here...
+				while not loaded:
+					# install a custom importer to intercept any extra needed modules
+					# when executing the module code just obtained from the server
+					_agentImportLock.acquire()
+					importer = agent_import(__builtin__.__import__)
+					__builtin__.__import__ = importer
+					_agentImportLock.release()
+	 
+					try:
+						exec code in mod.__dict__
+						loaded = 1
+					except ImportError:
+						mname = importer.name
+						if importer is not None:
+							__builtin__.__import__ = importer.orig_import
+							importer = None
+	 
+						# XXX probably want maxrecursion here...
+						self._retrieveCode(mname, level+1)
+	 
+			finally:
+				if importer is not None:
+					__builtin__.__import__ = importer.orig_import
 		finally:
-			if importer is not None:
-				__builtin__.__import__ = importer.orig_import
- 
+			_remoteImportRLock.release()
+
 
 	def remoteInvocation(self, method, flags, *args):
 		if 'conn' not in self.__dict__.keys():
@@ -394,13 +415,18 @@ class PYROAdapter:
 		if not Pyro.config.PYRO_MOBILE_CODE:
 			answer = pickle.loads(answer)
 		else:
+			importer=None
 			try:
+				_remoteImportRLock.acquire()
 				loaded = 0
 				# XXX maxtries here...
 				while not loaded:
-					import __builtin__
+					# install a custom importer to intercept any extra needed modules
+					# when unpickling the answer just obtained from the server
+					_agentImportLock.acquire()
 					importer = agent_import(__builtin__.__import__)
 					__builtin__.__import__ = importer
+					_agentImportLock.release()
  
 					try:
 						answer = pickle.loads(answer)
@@ -415,11 +441,12 @@ class PYROAdapter:
 			finally:
 				if importer is not None:
 					__builtin__.__import__ = importer.orig_import
+				_remoteImportRLock.release()
 
 		if isinstance(answer,PyroExceptionCapsule):
 			if isinstance(answer.excObj,_InternalNoModuleError):
 				# server couldn't load module, supply it
-				import new
+				# XXX this code is ugly. and duplicated in remote_retrieve_code in core.py
 				try:
 					importmodule=new.module('-agent-import-')
 					mname=answer.excObj.modulename
@@ -432,19 +459,22 @@ class PYROAdapter:
 					m=eval('importmodule.'+mname)
 					bytecode=None
 					if hasattr(m,"_PYRO_bytecode"):
+						# use the bytecode that was put there earlier,
+						# this avoids recompiles of the source .py if we don't have .pyc bytecode available
 						bytecode=m._PYRO_bytecode
 					else:
 						# try to load the module's compiled source, or the real .py source if that fails.
+						# note that the source code (.py) is opened with universal newline mode
 						if not hasattr(m,"__file__"):
 							raise PyroError("cannot read module source code",mname)
 						(filebase,ext)=os.path.splitext(m.__file__)
 						if ext.startswith(".PY"):
-							exts = ( ".PYO", ".PYC", ".PY" )	# uppercase
+							exts = ( (".PYO","rb"), (".PYC","rb"), (".PY","rU") )	# uppercase
 						else:
-							exts = ( ".pyo", ".pyc", ".py" )	# lowercase
-						for ext in exts:
+							exts = ( (".pyo","rb"), (".pyc","rb"), (".py","rU") )	# lowercase
+						for ext,mode in exts:
 							try:
-								bytecode=open(filebase+ext, "rb").read()
+								bytecode=open(filebase+ext, mode).read()
 								break
 							except EnvironmentError:
 								pass
@@ -468,8 +498,6 @@ class PYROAdapter:
 		# store in the connection what pickle method this is
 		if pflags&PFLG_XMLPICKLE_GNOSIS:
 			conn.pflags|=PFLG_XMLPICKLE_GNOSIS
-		elif pflags&PFLG_XMLPICKLE_PYXML:
-			conn.pflags|=PFLG_XMLPICKLE_PYXML
 		if ver!=self.version:
 			Log.error('PYROAdapter','incompatible protocol version')
 			if noReply:
@@ -504,17 +532,10 @@ class PYROAdapter:
 
 	def _unpickleRequest(self, pflags, body):
 		if pflags&PFLG_XMLPICKLE_GNOSIS:
-			if not Pyro.config.PYRO_MOBILE_CODE:
+			if Pyro.config.PYRO_XML_PICKLE=='gnosis':
+				return pickle.loads(body)
+			else:
 				return util.getXMLPickle('gnosis').loads(body)
-			# we use mobile code with xml_pickle, needs paranoia -1 to make that work	
-			pick=util.getXMLPickle('gnosis')
-			pick.setParanoia(-1)
-			try:
-				return pick.loads(body)
-			finally:
-				pick.setParanoia(0)		# set it back to default
-		elif pflags&PFLG_XMLPICKLE_PYXML:
-			return util.getXMLPickle('pyxml').loads(body)
 		elif Pyro.config.PYRO_XML_PICKLE:
 			Log.error('PYROAdapter','xml pickle required, got other pickle')
 			raise ProtocolError('xml pickle required, got other pickle')
@@ -536,9 +557,12 @@ class PYROAdapter:
 		importer=fromlist=None
 		try:
 			try:
-				import __builtin__
+				# install a custom importer to intercept any extra needed modules
+				# when unpickling the request just obtained from the client
+				_agentImportLock.acquire()
 				importer=agent_import(__builtin__.__import__)
 				__builtin__.__import__=importer
+				_agentImportLock.release()
 				req=self._unpickleRequest(pflags, body)
 				if type(req)!=type(()):
 					raise TypeError("REQUESTDATA ISN'T A TUPLE")
@@ -587,9 +611,13 @@ class PYROAdapter:
 				res = obj[0].Pyro_dyncall(req[1],flags,req[3])	# (method,flags,args)
 			else:
 				try:
-					import __builtin__
+					# install a custom importer to intercept any extra needed modules
+					# when executing the remote method. (using the data passed in by
+					# the client may trigger additional imports)
+					_agentImportLock.acquire()
 					importer=agent_import(__builtin__.__import__)
 					__builtin__.__import__=importer
+					_agentImportLock.release()
 					res = obj[0].Pyro_dyncall(req[1],flags,req[3])	# (method,flags,args)
 				finally:
 					__builtin__.__import__=importer.orig_import
@@ -599,10 +627,10 @@ class PYROAdapter:
 			# reply the result to the caller
 			if pflags&PFLG_XMLPICKLE_GNOSIS:
 				replyflags=PFLG_XMLPICKLE_GNOSIS
-				body=util.getXMLPickle('gnosis').dumps(res,Pyro.config.PYRO_PICKLE_FORMAT)
-			elif pflags&PFLG_XMLPICKLE_PYXML:
-				replyflags=PFLG_XMLPICKLE_PYXML
-				body=util.getXMLPickle('pyxml').dumps(res,Pyro.config.PYRO_PICKLE_FORMAT)
+				if Pyro.config.PYRO_XML_PICKLE=='gnosis':
+					body=pickle.dumps(res,Pyro.config.PYRO_PICKLE_FORMAT)
+				else:
+					body=util.getXMLPickle('gnosis').dumps(res,Pyro.config.PYRO_PICKLE_FORMAT)
 			else:
 				replyflags=0
 				body=pickle.dumps(res,Pyro.config.PYRO_PICKLE_FORMAT)
@@ -633,8 +661,6 @@ class PYROAdapter:
 		# return an encapsulated exception to the client
 		if conn.pflags&PFLG_XMLPICKLE_GNOSIS:
 			pic=util.getXMLPickle('gnosis')
-		elif conn.pflags&PFLG_XMLPICKLE_PYXML:
-			pic=util.getXMLPickle('pyxml')
 		else:
 			pic=pickle
 		try:
@@ -679,7 +705,7 @@ class agent_import:
 		self.orig_import=orig_import
 	def __call__(self,name, globals={},locals={},fromlist=None):
 		# save the import details:
-		self.name=name
+		self.name=name		# note: this must be a str object
 		self.fromlist=fromlist
 		return self.orig_import(name,globals,locals,fromlist)
 
@@ -801,7 +827,6 @@ class DefaultConnValidator:
 		# Server-side only, when new connection comes in.
 		# Challenge is secure hash of: server IP, process ID, timestamp, random value
 		# (NOTE: MUST RETURN EXACTLY AUTH_CHALLENGE_SIZE(=16) BYTES!)
-		import random
 		try:
 			pid=os.getpid()
 		except:
@@ -935,7 +960,7 @@ class TCPServer:
 						if not conn.connected:
 							# connection has been closed in the meantime!
 							raise ConnectionClosedError()
-						ins,outs,exs=select.select([conn],[],[],2)
+						ins,outs,exs=safe_select([conn],[],[],2)
 						if conn in ins or conn in exs:
 							self.handleInvocation(conn)
 					except ConnectionClosedError:
@@ -948,7 +973,7 @@ class TCPServer:
 				# log entry has already been written by newConnValidator
 				self.removeConnection(conn)
 		finally:
-			# print 'EXIT THREAD:',currentThread().getName()
+			# exiting thread.
 			self._removeFromConnectionList(None)
 
 	def _removeFromConnectionList(self, obj):
@@ -976,10 +1001,7 @@ class TCPServer:
 	def _handleRequest_NoThreads(self,timeout,others,callback):
 		# self.connections is used to keep track of TCPConnections
 		socklist = self.connections+[self.sock]+others
-		if timeout==None:
-			ins,outs,exs = select.select(socklist,[],[])
-		else:
-			ins,outs,exs = select.select(socklist,[],[],timeout)
+		ins,outs,exs = safe_select(socklist,[],[],timeout)
 		if self.sock in ins:
 			# it was the server socket, new incoming connection
 			ins.remove(self.sock)
@@ -1033,10 +1055,7 @@ class TCPServer:
 	def _handleRequest_Threaded(self,timeout,others,callback):
 		# self.connections is used to keep track of connection Threads
 		socklist = [self.sock]+others
-		if timeout==None:
-			ins,outs,exs = select.select(socklist,[],[])
-		else:
-			ins,outs,exs = select.select(socklist,[],[],timeout)
+		ins,outs,exs = safe_select(socklist,[],[],timeout)
 		if self.sock in ins:
 			# it was the server socket, new incoming connection
 			if self._ssl_server:
@@ -1065,7 +1084,6 @@ class TCPServer:
 			self.initTLS(thread.localStorage)
 			self.connections.append(thread)
 			thread.start()
-			# print 'NEW THREAD:'+thread.getName()
 		elif callback:
 			# the 'others' must have fired...
 			callback(ins)
@@ -1098,3 +1116,18 @@ class TCPServer:
 		else:
 			return map(lambda conn: conn.sock, self.connections)+[self.sock]
 
+# Sometimes safe_select() raises an select.error exception with the EINTR
+# errno flag set, which basically tells the caller to try again later.
+# This safe_select method works around this case and indeed just tries again.
+def safe_select(r,w,e,timeout=None):
+	while True:
+		try:
+			if timeout is not None:
+				return select.select(r,w,e,timeout)
+			else:
+				return select.select(r,w,e)
+		except select.error,x:
+			if x.args[0] == errno.EINTR or (hasattr(errno, 'WSAEINTR') and x.args[0] == errno.WSAEINTR):
+				pass
+			else:
+				raise

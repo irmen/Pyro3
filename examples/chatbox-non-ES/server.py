@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 
-from threading import Thread
+from threading import Thread, currentThread
 from Pyro.errors import NamingError
-import Pyro.core, Pyro.naming
+import Pyro.core, Pyro.naming, Pyro.util
 import sys
 
 CHAT_SERVER_GROUP = ":ChatBox"
@@ -16,6 +16,7 @@ class ChatBox(Pyro.core.ObjBase):
 		Pyro.core.ObjBase.__init__(self)
 		self.channels={}		# registered channels { channel --> (nick, client callback) list }
 		self.nicks=[]			# all registered nicks on this server
+		self.publishMutex = Pyro.util.getLockObject()
 	def getChannels(self):
 		return self.channels.keys()
 	def getNicks(self):
@@ -59,16 +60,20 @@ class ChatBox(Pyro.core.ObjBase):
 			return
 		for (n,c) in self.channels[channel][:]:		# use a copy of the list
 			try:
-				c.message(nick,msg)	# oneway call
+				# we claim ownership of the proxy, but only in a thread lock
+				# noone else is calling methods on the c, so this is safe to do.
+				self.publishMutex.acquire()
+				try:
+					c._transferThread()
+					c.message(nick,msg)	# oneway call
+				finally:
+					self.publishMutex.release()
 			except Pyro.errors.ConnectionClosedError,x:
 				# connection dropped, remove the listener if it's still there
 				# check for existence because other thread may have killed it already
 				if (n,c) in self.channels[channel]:
 					self.channels[channel].remove((n,c))
 					print 'Removed dead listener',n,c
-			except:
-				# ignore all other errors
-				pass
 
 
 def main():

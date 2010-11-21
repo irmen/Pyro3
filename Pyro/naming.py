@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: naming.py,v 2.54 2005/10/06 20:00:29 irmen Exp $
+#	$Id: naming.py,v 2.64 2007/03/04 01:45:49 irmen Exp $
 #	Pyro Name Server
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -8,15 +8,16 @@
 #
 #############################################################################
 
-import sys, os, socket, time
+import sys, os, socket, time, traceback
 import dircache, shutil, SocketServer
 import Pyro
 import util, errors, core, protocol, constants
+if util.supports_multithreading():
+	import threading
 
 
 if os.name!='java':			# Jython has no errno/select modules
 	import errno
-	import select
 else:
 	# fake an errno module
 	class Errno: pass
@@ -56,16 +57,33 @@ class NameServerLocator:
 			return self.__sendSysCommand(request, host, port, trace, logerrors, Pyro.constants.NSROLE_PRIMARY)
 		except KeyboardInterrupt:
 			raise
-		except Exception:
+		except (socket.error, errors.PyroError):
 			if not port:
 				# the 'first' name server failed, try the second
-				result=self.__sendSysCommand(request, host, port, trace, logerrors, Pyro.constants.NSROLE_SECONDARY)
-				# found the second!
-				# switch config for first and second so that the second one (which we found) will now be tried first
-				Pyro.config.PYRO_NS2_HOSTNAME, Pyro.config.PYRO_NS_HOSTNAME = Pyro.config.PYRO_NS_HOSTNAME, Pyro.config.PYRO_NS2_HOSTNAME
-				Pyro.config.PYRO_NS2_PORT, Pyro.config.PYRO_NS_PORT = Pyro.config.PYRO_NS_PORT, Pyro.config.PYRO_NS2_PORT
-				Pyro.config.PYRO_NS2_BC_PORT, Pyro.config.PYRO_NS_BC_PORT = Pyro.config.PYRO_NS_BC_PORT, Pyro.config.PYRO_NS2_BC_PORT
-				return result
+				try:
+					result=self.__sendSysCommand(request, host, port, trace, logerrors, Pyro.constants.NSROLE_SECONDARY)
+					# found the second!
+					# switch config for first and second so that the second one (which we found) will now be tried first
+					Pyro.config.PYRO_NS2_HOSTNAME, Pyro.config.PYRO_NS_HOSTNAME = Pyro.config.PYRO_NS_HOSTNAME, Pyro.config.PYRO_NS2_HOSTNAME
+					Pyro.config.PYRO_NS2_PORT, Pyro.config.PYRO_NS_PORT = Pyro.config.PYRO_NS_PORT, Pyro.config.PYRO_NS2_PORT
+					Pyro.config.PYRO_NS2_BC_PORT, Pyro.config.PYRO_NS_BC_PORT = Pyro.config.PYRO_NS_BC_PORT, Pyro.config.PYRO_NS2_BC_PORT
+					return result
+				except (socket.error, errors.PyroError):
+					# Could not find using broadcast. Try the current host and localhost as well.
+					for host in (Pyro.protocol.getHostname(), "localhost"):
+						if trace:
+							print "Trying host",host
+						Log.msg('NameServerLocator','Trying host',host)
+						try:
+							result=self.__sendSysCommand(request, host, port, trace, logerrors, Pyro.constants.NSROLE_PRIMARY)
+							Pyro.config.PYRO_NS_HOSTNAME = host
+							return result
+						except errors.ConnectionDeniedError:
+						    raise
+						except (socket.error, errors.PyroError),x:
+							pass
+					else:
+						raise errors.NamingError("could not find NameServer")
 			else:
 				raise
 
@@ -97,11 +115,10 @@ class NameServerLocator:
 				if request==NS_SYSCMD_LOCATION:
 					prox.ping()	# force resolving of PYROLOC: uri
 					return prox.URI # return resolved uri
+				elif request==NS_SYSCMD_SHUTDOWN:
+					return prox._shutdown()
 				else:
-					try:
-						return prox._shutdown()
-					except Exception,x:
-						return "Error processing shutdown request. Try again. "+str(x)
+					raise ValueError("invalid command specified")
 
 			# No host specified. Use broadcast mechanism
 			if os.name=='java':
@@ -119,13 +136,20 @@ class NameServerLocator:
 			if trace:
 				print 'Locator: searching Pyro Name Server...'
 			try:
-				for i in range(Pyro.config.PYRO_BC_RETRIES+1):
+				bc_retries=Pyro.config.PYRO_BC_RETRIES
+				if bc_retries<0:
+					bc_retries=sys.maxint-1
+				bc_retries = min(sys.maxint-1, bc_retries)
+				for i in xrange(bc_retries+1):
 					# send request to both Pyro NS (if running in paired mode)
 					s.sendto(request, destination1)
 					if destination2!=destination1:
 						s.sendto(request, destination2)
 					if os.name!='java':
-						ins,outs,exs = select.select([s],[],[s],Pyro.config.PYRO_BC_TIMEOUT)
+						timeout=min(sys.maxint,Pyro.config.PYRO_BC_TIMEOUT)
+						if timeout<0:
+							timeout=None
+						ins,outs,exs = protocol.safe_select([s],[],[s],timeout)
 					else:
 						ins=[s]		# XXX crappy Jython solution (no select)
 					if s in ins:
@@ -141,6 +165,7 @@ class NameServerLocator:
 				Log.error('NameServerLocator','network error:',e)
 			if trace:
 				print 'Locator: network error:',e
+			raise
 		if logerrors:
 			Log.error('NameServerLocator','Name Server not responding to broadcast')
 		raise errors.PyroError('Name Server not responding')
@@ -173,6 +198,10 @@ class NameServerProxy:
 		self.objectID = URI.objectID
 		self.adapter = protocol.getProtocolAdapter(self.URI.protocol)
 		self.adapter.setIdentification(identification)
+		if util.supports_multithreading():
+			self.ownerThreadId = id(threading.currentThread())
+		else:
+			self.ownerThreadId = None
 		if noconnect:
 			self.adapter.URI=URI.clone()
 		else:
@@ -183,6 +212,9 @@ class NameServerProxy:
 			self.adapter.release()
 			
 	def __remoteinvoc(self, *args):
+		if util.supports_multithreading():
+			if id(threading.currentThread()) != self.ownerThreadId:
+				raise errors.PyroError("not allowed to share nameserver proxy among multiple threads")
 		try:
 			return self.adapter.remoteInvocation(*args)
 		except errors.ProtocolError,x:
@@ -231,9 +263,31 @@ class NameServerProxy:
 		return self.adapter.remoteInvocation('_resync',0,twinProxy)
 	def _synccall(self, *args):
 		self.adapter.remoteInvocation('_synccall',constants.RIF_Varargs, args)
+	def _transferThread(self, newOwnerThread=None):
+		if newOwnerThread is not None:
+			self.ownerThreadId = id(newOwnerThread)
+		elif util.supports_multithreading():
+			self.ownerThreadId = id(threading.currentThread())
+		else:
+			self.ownerThreadId = None
+	def __copy__(self):
+		# return a Non-connected copy of ourselves)
+		proxyCopy = NameServerProxy(self.URI, noconnect=1)
+		proxyCopy.adapter.setIdentification(self.adapter.getIdentification(), munge=False)   # copy identification info
+		return proxyCopy
+	def __deepcopy__(self, arg):
+		raise errors.PyroError("cannot deepcopy a nameserver proxy")
 	def __getstate__(self):
-		self._release()		# release socket to be able to pickle this object
-		return self.__dict__
+		# for pickling, return a non-connected copy of ourselves:
+		copy = self.__copy__()
+		copy._release()
+		del copy.ownerThreadId    # will be reset on the receiving side
+		return copy.__dict__
+	def __setstate__(self, args):
+		# this appears to be necessary otherwise pickle won't work
+		self.__dict__=args
+		self._transferThread()		# claim the proxy for ourselves
+				
 
 # Can be used to expand names to absolute names (NS proxy uses this)
 # but user code should use the fullName method of the proxy.
@@ -266,6 +320,7 @@ class NameServer(core.ObjBase):
 		self.lock=util.getLockObject()
 		self.role=role
 		self.otherNS=None
+		self.ignoreShutdown=False
 		if role in (Pyro.constants.NSROLE_PRIMARY, Pyro.constants.NSROLE_SECONDARY):
 			# for paired mode with identification, we need to remember the ident string
 			adapter=Pyro.protocol.getProtocolAdapter("PYRO")
@@ -311,6 +366,8 @@ class NameServer(core.ObjBase):
 		self.lock.acquire()
 		try:
 			(group, name)=self.locateGrpAndName(name)
+			if len(name or "")<1:
+				raise errors.NamingError('invalid name',origname)
 			if isinstance(group,NameValue):
 				raise errors.NamingError('parent is no group', group.name)
 			try:
@@ -328,6 +385,8 @@ class NameServer(core.ObjBase):
 		self.lock.acquire()
 		try:
 			(group, name)=self.locateGrpAndName(name)
+			if len(name or "")<1:
+				raise errors.NamingError('invalid name',origname)
 			try:
 				group.cutleaf(name)
 				Log.msg('NameServer','unregistered',name)
@@ -362,7 +421,7 @@ class NameServer(core.ObjBase):
 			r=self.root.flatten()
 		finally:
 			self.lock.release()
-		for i in range(len(r)):
+		for i in xrange(len(r)):
 			r[i]=(':'+r[i][0], r[i][1])
 		return r
 
@@ -417,15 +476,19 @@ class NameServer(core.ObjBase):
 	# --- hierarchical naming support
 	def createGroup(self,groupname):
 		groupname=self.validateName(groupname)
+		if len(groupname)<2:
+			raise errors.NamingError('invalid groupname', groupname)
 		self.lock.acquire()
 		try:
 			(parent,name)=self.locateGrpAndName(groupname)
+			if isinstance(parent,NameValue):
+				raise errors.NamingError('parent is no group', groupname)
 			try:
 				parent.newbranch(name)
 				Log.msg('NameServer','created group',groupname)
 				self._dosynccall("createGroup",groupname)
-			except KeyError,x:
-				raise errors.NamingError(x)
+			except KeyError:
+				raise errors.NamingError('group already exists',name)
 		finally:
 			self.lock.release()
 
@@ -505,9 +568,13 @@ class NameServer(core.ObjBase):
 
     # --- shut down the server
 	def _shutdown(self):
-		print 'Name Server received shutdown request... will shutdown shortly...'
-		self.getDaemon().shutdown()
-		return "Will shut down shortly"
+		if self.ignoreShutdown:
+			Log.msg('NameServer','received shutdown request, but shutdown is denied')
+			return 'Shutdown request denied'
+		else:
+			Log.msg('NameServer','received shutdown request, will shutdown shortly')
+			self.getDaemon().shutdown()
+			return "Will shut down shortly"
         
 	# --- private methods follow
 	def _getSyncDump(self):
@@ -537,7 +604,7 @@ class NameServer(core.ObjBase):
 			return self.root
 
 	def validateName(self,name):
-		if len(name)>=1 and name[0]==':':
+		if name[0]==':':
 			if ('' not in name.split('.')):
 				for i in name:
 					if ord(i)<33 or ord(i)>126 or i=='\\':
@@ -578,11 +645,15 @@ class NameServer(core.ObjBase):
 #############################################################################
 
 class NameSpaceSystemMeta:
-	def __init__(self, timestamp, owner):
+	def __init__(self, node, timestamp, owner):
 		self.timestamp=timestamp
 		self.owner=owner
+		if isinstance(node, NamedTree):
+			self.type=0  # tree
+		else:
+			self.type=1  # leaf
 	def __str__(self):
-		return "[timestamp="+str(self.timestamp)+" owner="+str(self.owner)+"]"
+		return "[type="+str(self.type)+" timestamp="+str(self.timestamp)+" owner="+str(self.owner)+"]"
 
 		
 # All nodes in the namespace (groups, or namevalue pairs--leafs) have
@@ -590,7 +661,7 @@ class NameSpaceSystemMeta:
 class NameSpaceNode:
 	def __init__(self, name, meta, owner):
 		self.name=name
-		self.systemMeta = NameSpaceSystemMeta(time.time(), owner)
+		self.systemMeta = NameSpaceSystemMeta(self, time.time(), owner)
 		self.userMeta = meta
 	def getMeta(self):
 		return self.userMeta
@@ -760,7 +831,7 @@ class PersistentNameServer(NameServer):
 				elif x.errno==errno.ENOTDIR:
 					raise errors.NamingError('parent is no group')
 				else:
-					raise errors.NamingError(x)
+					raise errors.NamingError(str(x))
 		finally:
 			self.lock.release()
 
@@ -780,7 +851,7 @@ class PersistentNameServer(NameServer):
 					Log.msg('NameServer','attempt to remove a group:',name)
 					raise errors.NamingError('is a group, not an object',name)
 				else:
-					raise errors.NamingError(x)
+					raise errors.NamingError(str(x))
 		finally:
 			self.lock.release()
 			
@@ -799,7 +870,7 @@ class PersistentNameServer(NameServer):
 				Log.msg('NameServer','attempt to resolve groupname:',name)
 				raise errors.NamingError('attempt to resolve groupname',name)
 			else:
-				raise errors.NamingError(x)
+				raise errors.NamingError(str(x))
 
 	def flatlist(self):
 		dbroot=self.translate(':')
@@ -829,7 +900,7 @@ class PersistentNameServer(NameServer):
 				elif x.errno == errno.ENOENT:
 					raise errors.NamingError('(parent)group not found')
 				else:
-					raise errors.NamingError(x)
+					raise errors.NamingError(str(x))
 		finally:
 			self.lock.release()
 
@@ -853,7 +924,7 @@ class PersistentNameServer(NameServer):
 				elif x.errno==errno.ENOTDIR:
 					raise errors.NamingError('is no group',groupname)
 				else:
-					raise errors.NamingError(x)
+					raise errors.NamingError(str(x))
 		finally:
 			self.lock.release()
 			
@@ -1098,11 +1169,14 @@ class NameServerStarter:
 	def initialize(self, *args, **kwargs):		# see _start for allowed arguments
 		self._start( startloop=0, *args, **kwargs )
 	def getServerSockets(self):
-		return self.daemon.getServerSockets() + [self.bcserver.getServerSocket()]
+		result=self.daemon.getServerSockets()
+		if self.bcserver:
+			result.append(self.bcserver.getServerSocket())
+		return result
 	def waitUntilStarted(self,timeout=None):
 		self.started.wait(timeout)
 		return self.started.isSet()
-	def _start(self,hostname='', nsport=0, bcport=0, keep=0, persistent=0, dbdir=None, Guards=(None,None), allowmultiple=0, verbose=0, startloop=1, role=(constants.NSROLE_SINGLE,None) ):
+	def _start(self,hostname=None, nsport=0, bcport=0, keep=0, persistent=0, dbdir=None, Guards=(None,None), allowmultiple=0, verbose=0, startloop=1, role=(constants.NSROLE_SINGLE,None) ):
 		if not nsport:
 			if role[0]==constants.NSROLE_SECONDARY:
 				nsport=Pyro.config.PYRO_NS2_PORT
@@ -1177,28 +1251,40 @@ class NameServerStarter:
 		# Therefore we first try "<broadcast>", if that fails, try "".
 		self.bcserver=None
 		notStartedError=""
-		for bc_bind in ("<broadcast>", ""):
-			try:
-				self.bcserver = BroadcastServer((bc_bind,bcport),bcRequestHandler,norange=1)
-			except socket.error,x:
-				notStartedError += str(x)+" "
-		if not self.bcserver:
-			print 'Cannot start broadcast server. Is somebody else occupying our broadcast port?'
-			print 'The error(s) were:',notStartedError
-			print '\nName Server was not started!'
-			raise errors.NamingError("cannot start broadcast server")
+		msg = daemon.validateHostnameAndIP()
+		if msg:
+			Log.msg('NS daemon','Not starting broadcast server because of issue with daemon IP address.')
+			if verbose:
+				print "Not starting broadcast server"
+		else:
+			for bc_bind in ("<broadcast>", ""):
+				try:
+					self.bcserver = BroadcastServer((bc_bind,bcport),bcRequestHandler,norange=1)
+					break
+				except socket.error,x:
+					notStartedError += str(x)+" "
+			if not self.bcserver:
+				print 'Cannot start broadcast server. Is somebody else occupying our broadcast port?'
+				print 'The error(s) were:',notStartedError
+				print '\nName Server was not started!'
+				raise errors.NamingError("cannot start broadcast server")
 	
-		if Guards[1]:
-			self.bcserver.setRequestValidator(Guards[1])
-		self.bcserver.keepRunning(keep)
-		if verbose:
-			if keep:
+			if Guards[1]:
+				self.bcserver.setRequestValidator(Guards[1])
+			self.bcserver.keepRunning(keep)
+
+		if keep:
+			ns.ignoreShutdown=True
+			if verbose:
 				print 'Will ignore shutdown requests.'
-			else:
+		else:
+			ns.ignoreShutdown=False
+			if verbose:
 				print 'Will accept shutdown requests.'
 
 			print 'Name server listening on:',daemon.sock.getsockname()
-			print 'Broadcast server listening on:',self.bcserver.socket.getsockname()
+			if self.bcserver:
+				print 'Broadcast server listening on:',self.bcserver.socket.getsockname()
 			message = daemon.validateHostnameAndIP()
 			if message:
 				print "\nWARNING:",message,"\n"
@@ -1219,13 +1305,18 @@ class NameServerStarter:
 
 		ns.publishURI(NS_URI,verbose)
 
-		self.bcserver.setNS_URI(NS_URI)
+		if self.bcserver:
+			self.bcserver.setNS_URI(NS_URI)
 		Log.msg('NS daemon','This is the Pyro Name Server.')
 		if persistent:
 			Log.msg('NS daemon','Persistent mode, database is in',ns.getDBDir())
 			if verbose:
 				print 'Persistent mode, database is in',ns.getDBDir()
-		Log.msg('NS daemon','Starting on',daemon.hostname,'port', daemon.port, ' broadcast server on port',bcport)
+		Log.msg('NS daemon','Starting on',daemon.hostname,'port', daemon.port)
+		if self.bcserver:
+			Log.msg('NS daemon','Broadcast server on port',bcport)
+		else:
+			Log.msg('NS daemon','No Broadcast server')
 
 		if role[0]==constants.NSROLE_PRIMARY:
 			print "Primary",
@@ -1254,17 +1345,19 @@ class NameServerStarter:
 			# I use a timeout here otherwise you can't break gracefully on Windoze
 			try:
 				daemon.setTimeout(20)  # XXX fixed timeout
-				daemon.requestLoop(lambda s=self: not s.bcserver.shutdown,
-					self.bcserver.preferredTimeOut,[self.bcserver],self.bcserver.bcCallback)
-				if self.bcserver.shutdown:
-					self.shutdown(ns)
+				if self.bcserver:
+					daemon.requestLoop(lambda s=self: not s.bcserver.shutdown,
+						self.bcserver.preferredTimeOut,[self.bcserver],self.bcserver.bcCallback)
+					if self.bcserver.shutdown:
+						self.shutdown(ns)
+				else:
+					daemon.requestLoop()
 			except KeyboardInterrupt:
 				Log.warn('NS daemon','shutdown on user break signal')
 				print 'Shutting down on user break signal.'
 				self.shutdown(ns)
 			except:
 				try:
-					import traceback
 					(exc_type, exc_value, exc_trb) = sys.exc_info()
 					out = ''.join(traceback.format_exception(exc_type, exc_value, exc_trb)[-5:])
 					Log.error('NS daemon', 'Unexpected exception, type',exc_type,
@@ -1274,13 +1367,12 @@ class NameServerStarter:
 					print out
 					print '*** Resuming operations...'
 				finally:	
-					del exc_type, exc_value, exc_trb
+					del exc_type, exc_value, exc_trb    # delete frame refs to allow proper GC
 
 			Log.msg('NS daemon','Shut down gracefully.')
 			print 'Name Server gracefully stopped.'
 		else:
 			# Do not enter the loop. Keep the objects needed for getServerSockets:
-			# self.bcserver=self.bcserver
 			self.daemon=daemon
 			self.daemon.setTimeout(20)  # XXX fixed timeout
 
@@ -1323,9 +1415,12 @@ class NameServerStarter:
 
 	def handleRequests(self,timeout=None):
 		# this method must be called from a custom event loop
-		self.daemon.handleRequests(timeout, [self.bcserver], self.bcserver.bcCallback)
-		if self.bcserver.shutdown:
-			self.shutdown()
+		if self.bcserver:
+			self.daemon.handleRequests(timeout, [self.bcserver], self.bcserver.bcCallback)
+			if self.bcserver.shutdown:
+				self.shutdown()
+		else:
+			self.daemon.handleRequests(timeout)
 
 	def shutdown(self, ns=None):
 		if ns:
@@ -1338,7 +1433,8 @@ class NameServerStarter:
 			del self.daemon
 		ns._removeTwinNS()
 		daemon.disconnect(ns) # clean up nicely
-		self.bcserver.shutdown=1
+		if self.bcserver:
+			self.bcserver.shutdown=1
 		daemon.shutdown()
 
 def main(argv):
@@ -1361,7 +1457,7 @@ def main(argv):
 		print '        -v = verbose output'
 		print '        -h = print this help'
 		raise SystemExit
-	host = Args.getOpt('n','')
+	host = Args.getOpt('n',None)
 	port = int(Args.getOpt('p',0))
 	bcport = int(Args.getOpt('b',0))
 	

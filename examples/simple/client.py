@@ -15,5 +15,8 @@ print test.mul('.',10)
 print test.add('String1','String2')
 
 print '*** invoking server method that crashes ***'
-print test.error()
+try:
+	print test.error()
+except Exception,x:
+	print "".join(Pyro.util.getPyroTraceback(x))
 

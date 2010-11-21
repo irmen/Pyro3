@@ -12,6 +12,7 @@ class MallObj(Pyro.core.ObjBase):
     def __init__(self):
         Pyro.core.ObjBase.__init__(self)
     def goShopping(self, shopper):
+        print "shop3 goshopping:",shopper
         shopper.visit("Shop 3")
         return shopper
     def __call__(self):

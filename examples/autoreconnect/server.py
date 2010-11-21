@@ -22,6 +22,11 @@ daemon = Pyro.core.Daemon()
 locator = Pyro.naming.NameServerLocator()
 ns = locator.getNS()
 
+try:
+    ns.createGroup(":test")
+except NamingError:
+    pass
+
 daemon.useNameServer(ns)
 
 # connect new instance, but using persistent mode

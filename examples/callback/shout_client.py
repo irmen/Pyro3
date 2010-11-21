@@ -15,8 +15,9 @@ class Listener(Pyro.core.ObjBase):
 
 abort=0
 
-def shouter(object,id):
+def shouter(objectURI):
 	global abort
+	object=objectURI.getProxy()  # we get our own proxy object because we're running in our own thread.
 	print 'Shouter thread is running.'
 	while not abort:
 		print 'Shouting something'
@@ -35,10 +36,11 @@ def main():
 	daemon.useNameServer(NS)
 	listener=Listener()
 	daemon.connect(listener)
-	server = NS.resolve(':test.callback').getProxy()
+	serverURI=NS.resolve(':test.callback')
+	server = serverURI.getProxy()
 	server.register(listener.getProxy())
 
-	thread=Thread(target=shouter, args=(server,listener.GUID()))
+	thread=Thread(target=shouter, args=(serverURI,))
 	thread.start()
 
 	while not abort:

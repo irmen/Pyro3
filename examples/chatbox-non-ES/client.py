@@ -37,6 +37,8 @@ class Chatter(Pyro.core.ObjBase):
 		self.inputThread.start()
 	def handleInput(self):
 		print 'Ready for input! Type /quit to quit'
+		# we need to get a new chatbox proxy because we're running in a different thread
+		chatbox = Pyro.core.getProxyForURI('PYRONAME://'+CHAT_SERVER_NAME)
 		try:
 			try:
 				while not self.abort:
@@ -44,11 +46,11 @@ class Chatter(Pyro.core.ObjBase):
 					if line=='/quit':
 						break
 					if line:
-						self.chatbox.publish(self.channel,self.nick,line)
+						chatbox.publish(self.channel,self.nick,line)
 			except EOFError:
 				pass
 		finally:
-			self.chatbox.leave(self.channel, self.nick)
+			chatbox.leave(self.channel, self.nick)
 			self.abort=1
 			print 'Bye! (from input thread)'
 

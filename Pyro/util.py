@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: util.py,v 2.41 2005/02/12 23:45:29 irmen Exp $
+#	$Id: util.py,v 2.52 2007/03/04 01:45:49 irmen Exp $
 #	Pyro Utilities
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -8,8 +8,8 @@
 #
 #############################################################################
 
-import os, sys
-import time, random
+import os, sys, traceback
+import time, random, linecache
 import Pyro					# bring in Pyro.config
 from Pyro.util2 import *	# bring in 'missing' util functions
 
@@ -25,6 +25,13 @@ def getLockObject():
 		return Lock()
 	else:
 		return BogusLock()
+def getRLockObject():	
+	if supports_multithreading():
+		from threading import RLock
+		return RLock()
+	else:
+		return BogusLock()
+
 
 # bogus event class, for systems that don't have threads
 class BogusEvent:
@@ -349,8 +356,7 @@ def genguid_scripthelper(argv):
 
 
 # Get the configured pickling module. 
-# Currently supported: cPickle, pickle, gnosis.xml.pickle (@paranoia -1),
-# and PyXML 0.8+'s xml.marshal.generic.
+# Currently supported: cPickle, pickle, gnosis.xml.pickle (@paranoia 0 or -1).
 def getPickle():
 	if Pyro.config.PYRO_XML_PICKLE:
 		# user requires xml pickle. Fails if that is not available!
@@ -365,80 +371,90 @@ def getPickle():
 			return pickle
 
 _xmlpickle={}
-# the following wrapper is necessary because PyXML's pickler
-# cannot take a 'binary' third argument...
-class PyXMLPickler:
-	def __init__(self):
-		import xml.marshal.generic
-		self.pickle=xml.marshal.generic
-	def dumps(self, obj, bin=None):
-		return self.pickle.dumps(obj)
-	def dump(self, obj, file, bin=None):
-		return self.pickle.dumps(obj,file)
-	def loads(self, str):
-		return self.pickle.loads(str)
-	def load(self, file):
-		return self.pickle.load(file)
-	
 def getXMLPickle(impl=None):		
 	# load & config the required xml pickle.
-	# Currently supported: Gnosis Utils' gnosis.xml.pickle,
-	# and PyXML 0.8+'s xml.marshal.generic
+	# Currently supported: Gnosis Utils' gnosis.xml.pickle.
 	global _xmlpickle
 	if not impl:
 		impl=Pyro.config.PYRO_XML_PICKLE
-	impl=impl.lower()
-	if impl=='any':
-		# first try if PyXML is available, otherwise, choose Gnosis.
-		impl='pyxml'
-		Pyro.config.PYRO_XML_PICKLE=impl
-		try:
-			import xml.marshal.generic
-		except ImportError:
-			impl='gnosis'
-			Pyro.config.PYRO_XML_PICKLE=impl
 	if impl in _xmlpickle:
 		return _xmlpickle[impl]
 	try:	
-		if impl=='pyxml': # PyXML init
-			_xmlpickle['pyxml']=PyXMLPickler()
-			return _xmlpickle['pyxml']
-		elif impl=='gnosis': # Gnosis init
+		if impl=='gnosis':
 			import gnosis.xml.pickle
-			_xmlpickle['gnosis']=gnosis.xml.pickle
-			gnosis.xml.pickle.setParanoia(0)		# default paranoia level is too strict for Pyro
-			gnosis.xml.pickle.setParser('SAX')		# use fastest parser (cEXPAT?)
-			return gnosis.xml.pickle
+			import gnosis.version
+			gnosisVer=(gnosis.version.MAJOR, gnosis.version.MINOR)
+			if gnosisVer==(1,2):
+				# gnosis 1.2 style pickling, with paranoia setting
+				_xmlpickle[impl]=gnosis.xml.pickle
+				gnosis.xml.pickle.setParanoia(Pyro.config.PYRO_GNOSIS_PARANOIA)		# default paranoia level is too strict for Pyro
+				gnosis.xml.pickle.setParser('SAX')		# use fastest parser (cEXPAT?)
+				return gnosis.xml.pickle
+			elif gnosisVer>=(1,3):
+				from gnosis.xml.pickle import SEARCH_ALL, SEARCH_STORE, SEARCH_NO_IMPORT, SEARCH_NONE
+				if Pyro.config.PYRO_GNOSIS_PARANOIA<0:
+					class_search_flag = SEARCH_ALL		# allow import of needed modules
+				elif Pyro.config.PYRO_GNOSIS_PARANOIA==0:
+					class_search_flag = SEARCH_NO_IMPORT  # dont import new modules, only use known
+				else:
+					class_search_flag = SEARCH_STORE   # only use class store
+				# create a wrapper class to be able to pass additional args into gnosis methods
+				class GnosisPickle:
+					def dumps(data, *args,**kwargs):
+						return gnosis.xml.pickle.dumps(data, allow_rawpickles=0)
+					dumps=staticmethod(dumps)
+					def loads(xml, *args, **kwargs):
+						return gnosis.xml.pickle.loads(xml, allow_rawpickles=0, class_search=class_search_flag)
+					loads=staticmethod(loads)
+					def dump(data, file, *args,**kwargs):
+						return gnosis.xml.pickle.dump(data, file, allow_rawpickles=0)
+					dump=staticmethod(dump)
+					def load(file, *args, **kwargs):
+						return gnosis.xml.pickle.load(file, allow_rawpickles=0, class_search=class_search_flag)
+					load=staticmethod(load)
+				_xmlpickle[impl]=GnosisPickle
+				return GnosisPickle
+			else:
+				raise NotImplementedError('no supported Gnosis tools version found (need at least 1.2). Found '+gnosis.version.VSTRING)
 		else:
-			raise ImportError('unsupported xml pickle implementation requested: '+impl)
+			raise ImportError('unsupported xml pickle implementation requested: %s' % impl)
 	except ImportError:
-		Log.error('server was asked to use xml pickling but implementation ('+impl+') is not available')
-		raise NotImplementedError('server was asked to use xml pickling but implementation ('+impl+') is not available')
+		Log.error('xml pickling implementation (%s) is not available' % impl)
+		raise NotImplementedError('xml pickling implementation (%s) is not available' % impl)
 
 
 # Pyro traceback printing
 def getPyroTraceback(exc_obj):
 	import constants
+	def formatRemoteTraceback(remote_tb_lines) :
+		result=[]
+		result.append(" +--- This exception occured remotely (Pyro) - Remote traceback:")
+		for line in remote_tb_lines :
+			if line.endswith("\n"):
+				line=line[:-1]
+			lines = line.split("\n")
+			for line in lines :
+				result.append("\n | ")
+				result.append(line)
+		result.append("\n +--- End of remote traceback")
+		return result
 	try:
 		exc_type, exc_value, exc_trb=sys.exc_info()
 		remote_tb=getattr(exc_obj,constants.TRACEBACK_ATTRIBUTE,None)
 		local_tb=formatTraceback(exc_type, exc_value, exc_trb)
 		if remote_tb:
-			return [ '---- remote Pyro traceback ----\n' ] + \
-				remote_tb + [ '---- local traceback ----\n' ] +  local_tb
+			remote_tb=formatRemoteTraceback(remote_tb)
+			return local_tb + remote_tb
 		else:
 			# hmm. no remote tb info, return just the local tb.
 			return local_tb
 	finally:
-		# clean up cycle to traceback
+		# clean up cycle to traceback, to allow proper GC
 		del exc_type, exc_value, exc_trb
 
 
 def formatTraceback(ex_type, ex_value, tb):
-	import traceback
 	if Pyro.config.PYRO_DETAILED_TRACEBACK:
-		import linecache
-
 		get_line_number = traceback.tb_lineno
 	
 		res = ['-'*50+ "\n",

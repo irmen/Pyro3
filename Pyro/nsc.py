@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: nsc.py,v 2.17 2005/02/12 23:45:29 irmen Exp $
+#	$Id: nsc.py,v 2.19 2006/11/20 18:21:39 irmen Exp $
 #	Pyro Name Server Control Tool
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -40,8 +40,16 @@ class PyroNSControl:
 			self.NS._setIdentification(ident)
 		else:
 			result = locator.sendSysCommand(sysCmd,host,port,1)
-			print 'NS replied to system command',sysCmd,':',result
-		
+			print 'Result from system command',sysCmd,':',result
+
+	def handleError(self, msg, exc):
+		print "## %s: " % msg, 
+		if isinstance(exc.args, (list, tuple)):
+			print "; ".join(exc.args[:-1]),
+		else:
+			print exc.args,
+		print " ##"
+
 	def ping(self):
 		self.connect()
 		self.NS.ping()
@@ -69,7 +77,7 @@ class PyroNSControl:
 				try:
 					self.printList(self.NS.list(n))
 				except NamingError,x:
-					print '## can\'t list:',x,'##'
+				    self.handleError("can't list", x)
 
 	def printList(self,list):
 		list.sort()
@@ -91,7 +99,7 @@ class PyroNSControl:
 				try:
 					print self.NS.resolve(n)
 				except NamingError,x:
-					print '## can\'t resolve:',x,'##'
+				    self.handleError("can't resolve", x)
 	
 	def register(self):
 		self.connect()
@@ -99,8 +107,8 @@ class PyroNSControl:
 			self.NS.register(self.Args.args[0],self.Args.args[1])
 			uri=core.PyroURI(self.Args.args[1])
 			print 'registered',self.Args.args[0],' --> ',uri
-		except NamingError,arg:
-			print 'Error from NS:',arg
+		except NamingError,x:
+			self.handleError('Error from NS',x)
 		except IndexError:
 			print 'Register needs 2 args: name URI'
 		
@@ -111,7 +119,7 @@ class PyroNSControl:
 				self.NS.unregister(n)
 				print n,'unregistered.'
 			except NamingError,x:
-				print '## Can\'t unregister',n,'because',x
+				self.handleError("Can't unregister", x)
 
 	def creategroup(self):
 		self.connect()
@@ -120,7 +128,7 @@ class PyroNSControl:
 				self.NS.createGroup(n)
 				print n,'created.'
 			except NamingError,x:
-				print '## Can\'t create',n,'because',x
+				self.handleError("Can't create group '"+n+"'",x)
 
 	def deletegroup(self):
 		self.connect()
@@ -129,7 +137,7 @@ class PyroNSControl:
 				self.NS.deleteGroup(n)
 				print n,'deleted.'
 			except NamingError,x:
-				print '## Can\'t delete',n,'because',x
+				self.handleError("Can't delete group '"+n+"'",x)
 				
 	def showmeta(self):
 		self.connect()
@@ -141,7 +149,7 @@ class PyroNSControl:
 				print "system meta info :",self.NS._getSystemMeta(n)
 				print "  user meta info :",self.NS.getMeta(n)
 			except NamingError,x:
-				print "## Can't get meta because",x
+				self.handleError("Can't get metadata",x)
 	
 	def setmeta(self):
 		self.connect()

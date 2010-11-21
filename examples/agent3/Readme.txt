@@ -12,11 +12,6 @@ but that is not possible if you're passing the agent on
 to other servers (the dynamically loaded bytecode no longer
 has a file associated). 
 
-NOTE that due to a limitation of Python and the current mobile code
-implementation in Pyro, your agents *must* be located in a separate 
-module. Any agents declared in the module that runs as __main__ 
-will not work!
-
 Also see 'agent2' for a more thorough mobile code example and
 explanation.
 

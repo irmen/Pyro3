@@ -14,9 +14,10 @@ because otherwise the security module cannot be loaded from this
 directory (this is correct -safe- behavior of Python).
 
 Start the nameserver with:
-	"ns -s NSSecEx"
+	"ns -v -s NSSecEx"
 
 It will show you that it's using your security plugins.
+(If you don't use the -v flag, you won't see this on the console)
 
 Using a custom connection validator enables you to have more
 control over the authentication process, and to specify

@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import sys, os
-
+import Pyro.util
 
 sys.path.insert(0,os.pardir)	# to find testclient.py
 
@@ -40,6 +40,6 @@ print '(the next attribute access should raise an exception)'
 try:
 	print 'not existing=',test.notexisting
 except Exception,x:
-	print '>> got exception:',x
+	print "".join(Pyro.util.getPyroTraceback(x))
 
 

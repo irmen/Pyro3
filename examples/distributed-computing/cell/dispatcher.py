@@ -2,7 +2,7 @@ import Pyro.core
 import Pyro.naming
 import Pyro.errors
 import itertools
-import sys,os,time
+import sys,os,time,copy
 import sets
 
 Pyro.config.PYRO_MOBILE_CODE=1		# Enable mobile code (for the tasks)
@@ -27,15 +27,16 @@ class Dispatcher(Pyro.core.ObjBase):
     def __init__(self, nameServer):
         Pyro.config.PYRO_NS_DEFAULTGROUP = ":Distributed.Cells"
         Pyro.core.ObjBase.__init__(self)
-        self.NS=nameServer
+        self.NSBase=nameServer
         # make sure that the Event Server is active:
-        self.NS.resolve(Pyro.constants.EVENTSERVER_NAME)
+        self.NSBase.resolve(Pyro.constants.EVENTSERVER_NAME)
     def process(self,task):
         print "received task:",task
+        NS=copy.copy(self.NSBase)   # copy proxy because of thread issue
         try:
-            cells=self.NS.list(None)  # search the namespace for processors
+            cells=NS.list(None)  # search the namespace for processors
             print "cells:",cells
-            cells = [ self.NS.resolve(name).getAttrProxy() for name,otype in cells ]
+            cells = [ NS.resolve(name).getAttrProxy() for name,otype in cells ]
             if cells:
                 print "splitting task"
                 taskparts = task.split(len(cells))

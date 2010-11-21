@@ -61,4 +61,3 @@ mall.setCodeValidator(codeValidator)
 # finally, start the server.
 testserver.start(mall,'ShoppingMall')
 
-

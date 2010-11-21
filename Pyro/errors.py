@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: errors.py,v 2.15 2005/02/12 23:45:29 irmen Exp $
+#	$Id: errors.py,v 2.19 2007/02/10 23:38:05 irmen Exp $
 #	Pyro Exception Types
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -33,44 +33,16 @@ class NoModuleError(PyroError):	pass		# no module found for incoming obj
 
 # do NOT use the following yourself:
 class _InternalNoModuleError(PyroError):	
-	def __init__(self, modulename, fromlist, *args):
-		PyroError.__init__(* (self,)+args)
+	def __init__(self, modulename=None, fromlist=None, *args):
+		# note: called without args on Python 2.5+, args will be set by __setstate__
 		self.modulename=modulename
 		self.fromlist=fromlist
-
-
-#############################################################################
-#	Remote exception printing
-#############################################################################
-
-import types, constants
-
-def __excStr__(selfobj) :
-	# This method replaces __str__ method of exception classes in order to
-	# return the remote traceback with the current message
-	
-	remote_tb = getattr(selfobj,constants.TRACEBACK_ATTRIBUTE,None)
-
-	if remote_tb:
-		std_str = selfobj.standardStr()
-		ztr = std_str
-		ztr += "\n  This exception occured remotely (Pyro) - Remote traceback:"
-		
-		for line in remote_tb :
-			if line.endswith("\n"):
-				line=line[:-1]
-				
-			lines = line.split("\n")
-			for line in lines :
-				ztr += "\n  | %s" % line
-
-		ztr += "\n  +--- End of remote traceback"
-		return ztr
-			
-	else:
-		# It's not a remote exception - Return the standard string
-		# (the exception class is permanently patched!)
-		return selfobj.standardStr()
+		PyroError.__init__(* (self,)+args)
+	def __getstate__(self):
+		return { "modulename": self.modulename, "fromlist": self.fromlist }
+	def __setstate__(self, state):
+		self.modulename=state["modulename"]
+		self.fromlist=state["fromlist"]
 
 
 #############################################################################
@@ -95,22 +67,16 @@ class PyroExceptionCapsule:
 		self.excObj = excObj
 		self.args=args  # if specified, this is the remote traceback info
 	def raiseEx(self):
+		# Modify the exception object to append some extra info to the message.
+		# NOTE: using 'args' is not recommended (deprecated) as written in
+		# the Python 2.5 manual (exception chapter)...
 		import Pyro.constants
-		# Modify __str__ method of exception class to append the remote traceback to the error message
-		# Normally self.excObj is an exception class (if server maps "string exceptions" to normal exceptions)
-		if type(self.excObj) == types.InstanceType :
-			excClass = self.excObj.__class__
-			if Pyro.config.PYRO_PRINT_REMOTE_TRACEBACK:
-				try :
-					Pyro_warning = excClass.Pyro_warning
-				# If no exception : exception class already patched
-				except :
-					excClass.Pyro_warning = "Method __str__ has been remapped to accomodate remote traceback display (old __str__ is now standardStr)"
-					excClass.standardStr = excClass.__str__
-					excClass.__str__ = __excStr__
-			else:
-				excClass.standardStr=excClass.__str__
-
+		if isinstance(self.excObj, Exception):
+			if not hasattr(self.excObj, "Pyro_traceback_set"):
+				self.excObj.Pyro_traceback_set = True
+				args=list(self.excObj.args) or []
+				args.append("This error occured remotely (Pyro). Remote traceback is available.")
+				self.excObj.args=tuple(args)
 		setattr(self.excObj,Pyro.constants.TRACEBACK_ATTRIBUTE,self.args)
 		raise self.excObj
 	def __str__(self):

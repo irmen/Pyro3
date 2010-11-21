@@ -1,6 +1,3 @@
-(because the client uses os.fork(), this example doesn't run on
-Windows!)
-
 This example shows the need of multithreading in the Pyro server.
 The client spawns serveral concurrent loops which access the same
 remote object. If the Pyro server is single threading, each remote

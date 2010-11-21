@@ -16,6 +16,9 @@ class Bouncer(Pyro.core.CallbackObjBase):
 		print "I'm",self.name,", bouncing back..."
 		message.append(self.name)
 		try:
+			# note that we can use the callback proxy directly because it has
+			# been passed in as a parameter to this method. That means that
+			# Pyro has already taken care of transfering control to the current thread.
 			result=callback.process(message, self.getProxy())
 			self.count+=1
 			result.insert(0,"passed on from "+self.name+':'+str(self.count))

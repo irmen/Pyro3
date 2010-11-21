@@ -39,7 +39,7 @@ def determinePeriod():
 class IOtestclass_delegate:
 	def process(self, name, period):
 		print 'called by',name
-		print 'thread=',id(currentThread())
+		print 'thread=',currentThread().getName()
 		try:
 			currentThread().localStorage.counter+=1
 			print 'TLS.counter=',currentThread().localStorage.counter
@@ -106,6 +106,9 @@ def main():
 
 	# make sure our namespace group exists
 	try: ns.createGroup(":test")
+	except NamingError: pass
+	
+	try: ns.unregister(":test.multithread")
 	except NamingError: pass
 
 	object=Pyro.core.ObjBase()  # delegate approach

@@ -1,10 +1,13 @@
 #############################################################################
 #
-#	$Id: __init__.py,v 2.7 2003/03/05 20:46:05 irmen Exp $
+#	$Id: __init__.py,v 2.10 2007/03/15 18:50:24 irmen Exp $
 #	Pyro file to make Pyro a package, and to set up configuration.
 #
 #	This is part of "Pyro" - Python Remote Objects
 #	Which is (c) Irmen de Jong - irmen@users.sourceforge.net
+#	More information on Pyro's website: http://pyro.sourceforge.net
+#
+#	Note: to see what Pyro version this is, print Pyro.constants.VERSION
 #
 #############################################################################
 

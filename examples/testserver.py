@@ -1,5 +1,6 @@
 #
-#	Test server base implementation, used by each of the tests
+#	Test server base implementation, used by a lot of the tests,
+#	to avoid having to repeat this boilerplate code time after time.
 #
 
 import sys

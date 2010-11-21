@@ -12,6 +12,7 @@ class MallObj(Pyro.core.ObjBase):
     def __init__(self):
         Pyro.core.ObjBase.__init__(self)
     def goShopping(self, shopper):
+        print "shop2 goshopping:",shopper
         shopper.visit("Shop 2")
         try:
             shop2=Pyro.core.getProxyForURI("PYRONAME://Shop3")

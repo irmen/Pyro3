@@ -61,7 +61,9 @@ class Chatter(Publisher, Subscriber):
 			except EOFError:
 				pass
 		finally:
-			self.chatbox.leave(self.channel, self.nick)
+			# need to get new chatbox proxy because we're in a different thread
+			chatbox = Pyro.core.getProxyForURI('PYRONAME://'+CHAT_SERVER_NAME)
+			chatbox.leave(self.channel, self.nick)
 			self.abort()
 			print 'Bye!'
 

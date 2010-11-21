@@ -33,6 +33,7 @@ new, other kinds of tasks.
   The effect will be better the more computers participating, ofcourse,
   but having 2 or 3 is usually enough already for interesting results.
 
+** NOTE: starting/removing cells after the dispatcher has run will not work **
 
 
 *** What the heck is this, anyway? ***

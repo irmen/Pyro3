@@ -18,17 +18,22 @@ Make sure that this directory can be found by Pyro.
 which defaults to "certs" in the PYRO_STORAGE directory,
 which is by default the current directory).
 
+NOTE: the supplied example certificates are only there to let
+you initialise the SSL layer. M2Crypto/SSL will check the hostname
+of the certificate (if it does its job), and will revoke it
+(because I put in the hostname pyro.sourceforge.net).
 
-See m2crypto homepage ( http://sandbox.rulemaker.net/ngps/m2/ ) or openssl
-documentation ( http://www.openssl.org ) for instructions on how to
-create your own ca and server/client certificates.
-Here is a good guide: http://sial.org/howto/openssl/
-Important: the creation of the .csr (req) files must be done in a
-different directory, with its own host.key. 
-The final creation of the server.pem and client.pem file is done by 
-concatenating the requester host.key and the .cert file.
+See m2crypto homepage ( http://wiki.osafoundation.org/Projects/MeTooCrypto ) or 
+openssl documentation ( http://www.openssl.org ) for instructions on how to 
+create your own ca and server/client certificates. Here is a good guide: 
+<http://sial.org/howto/openssl/ca/>  (Yes, use the Local CA and create
+two certificates-- one for the server and one for the client).
+Important: the creation of the CA .csr (req) files must be done in a different 
+directory, each with its own host.key. The final creation of the server.pem and 
+client.pem file is done by concatenating the requester host.key and the .cert 
+file.
 
 
-NOTE: the demo certificates provided are valid until january 2006.
+NOTE: the demo certificates provided are valid until january 2009.
       At that moment I'll have to create new demo certificates.
 

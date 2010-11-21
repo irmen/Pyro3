@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: constants.py,v 2.28 2005/04/17 03:45:53 irmen Exp $
+#	$Id: constants.py,v 2.32 2007/03/20 21:15:38 irmen Exp $
 #	Pyro global constants
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -10,7 +10,7 @@
 
 
 # General Pyro Version String ####
-VERSION = '3.5'
+VERSION = '3.6'
 
 # Fixed (internal) GUIDs
 INTERNAL_DAEMON_GUID='c0000000'+'01100000'+'10000000'+'10000001'

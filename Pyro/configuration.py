@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: configuration.py,v 2.26 2005/01/22 01:05:25 irmen Exp $
+#	$Id: configuration.py,v 2.32 2007/03/04 01:45:49 irmen Exp $
 #	Sets up Pyro's configuration (Pyro.config).
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -12,8 +12,8 @@
 
 # Initialize Pyro Configuration.
 
-import re, os
-from errors import PyroError
+import re, os, random
+from Pyro.errors import PyroError
 import Pyro.constants
 import Pyro.util2				# not util because of cyclic dependency
 
@@ -29,6 +29,8 @@ except ImportError:
 # $STORAGE which is replaced by the PYRO_STORAGE path.
 _defaults= {
 	'PYRO_STORAGE':			'$CURDIR',	# current dir (abs)
+	'PYRO_HOST':			'',
+	'PYRO_PUBLISHHOST':		None,
 	'PYRO_PORT':			7766,
 	'PYRO_PORT_RANGE':		100,
 	'PYRO_NS_HOSTNAME':		None,
@@ -43,6 +45,7 @@ _defaults= {
 	'PYRO_BC_TIMEOUT':		2,
 	'PYRO_PICKLE_FORMAT':	PICKLE_HIGHEST_PROTOCOL,
 	'PYRO_XML_PICKLE':		None,
+	'PYRO_GNOSIS_PARANOIA': 0,
 	'PYRO_TRACELEVEL':		0,
 	'PYRO_USER_TRACELEVEL':	0,
 	'PYRO_LOGFILE':			'$STORAGE/Pyro_log',		# (abs)
@@ -51,6 +54,7 @@ _defaults= {
 	'PYRO_STDLOGGING_CFGFILE': 'logging.cfg',
 	'PYRO_MAXCONNECTIONS':	200,
 	'PYRO_TCP_LISTEN_BACKLOG':   200,
+	'PYRO_BROKEN_MSGWAITALL':   0,
 	'PYRO_MULTITHREADED':	1,							# assume 1
 	'PYRO_COMPRESSION':		0,
 	'PYRO_MOBILE_CODE':		0,
@@ -60,7 +64,6 @@ _defaults= {
 	'PYRO_ES_QUEUESIZE':	1000,
 	'PYRO_ES_BLOCKQUEUE':	1,
 	'PYRO_DETAILED_TRACEBACK': 0,
-	'PYRO_PRINT_REMOTE_TRACEBACK': 0,
 	'PYROSSL_CERTDIR':		'$STORAGE/certs',			# (abs)
 	'PYROSSL_CA_CERT':		'ca.pem',
 	'PYROSSL_SERVER_CERT':	'server.pem',
@@ -108,7 +111,6 @@ class Config:
 			if not os.path.isdir(self.PYRO_STORAGE):
 				raise IOError('PYRO_STORAGE is not a directory ['+self.PYRO_STORAGE+']')
 				
-			import random
 			tstfile=os.path.join(self.PYRO_STORAGE,'_pyro_'+str(random.random())+".tmp")
 			try:
 				f=open(tstfile,'w')

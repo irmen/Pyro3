@@ -5,12 +5,11 @@ from Pyro.errors import *
 import Pyro.core
 
 sys.path.insert(0,os.pardir)	# to find testclient.py
+Pyro.config.PYRO_MOBILE_CODE=1		# Enable mobile code
 
 import testclient
+import agent.ShoppingAgent
 
-import agent.ShoppingAgent as SA
-
-Pyro.config.PYRO_MOBILE_CODE=1		# Enable mobile code
 
 # Get a proxy with attrs
 mall = testclient.getproxy('ShoppingMall',True)
@@ -29,11 +28,11 @@ except PyroError,x:
 print
 
 
-Harry = SA.ShoppingAgent('Harry')
+Harry = agent.ShoppingAgent.ShoppingAgent('Harry')
 Harry.cashLimit(500)
 Harry.shoppingList(['tv', 'mouse', 'bananas', 'boots', 'snowboard', 'goggles'])
 
-Joyce = SA.ShoppingAgent('Joyce')
+Joyce = agent.ShoppingAgent.ShoppingAgent('Joyce')
 Joyce.cashLimit(3200)
 Joyce.shoppingList(['bananas','mouse','computer','cd','spices','apples','boots'])
 

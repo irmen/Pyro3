@@ -1,4 +1,4 @@
-from tasks.task import PartitionableTask, TaskPartition
+import tasks.task
 
 import array
 import md5
@@ -21,10 +21,10 @@ CPU_SPEED /= 2
 # processes a small set of the possible search space.
 # (it is a brute-force search).
 #
-class CrackTask(PartitionableTask):
+class CrackTask(tasks.task.PartitionableTask):
             
     def __init__(self, sourceText):
-        PartitionableTask.__init__(self,"md5 guesser")
+        tasks.task.PartitionableTask.__init__(self,"md5 guesser")
         self.source=sourceText                      # we will guess this
         self.md5hash=md5.new(self.source).digest()   # we will crack this
         self.result=None
@@ -70,9 +70,9 @@ def allStrings(size, begin, end):
 # The subtask responsible for brute-forcing a certain part
 # of the search space (a limited range based on the first letter)
 #
-class CrackTaskPartition(TaskPartition):
+class CrackTaskPartition(tasks.task.TaskPartition):
     def __init__(self, md5hash, begin, end, size):
-        TaskPartition.__init__(self,"md5  %s - %s" % (chr(begin),chr(end-1)) )
+        tasks.task.TaskPartition.__init__(self,"md5  %s - %s" % (chr(begin),chr(end-1)) )
         self.md5hash=md5hash
         self.begin=begin
         self.end=end

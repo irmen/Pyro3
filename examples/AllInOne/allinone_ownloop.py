@@ -19,6 +19,7 @@ from Pyro.protocol import getHostname
 import Pyro.EventService.Server
 from Pyro.EventService.Clients import Publisher, Subscriber
 from Pyro.errors import *
+import Pyro.util
 
 import select
 from threading import Thread
@@ -167,14 +168,15 @@ def main():
 	p1 = Pyro.core.getProxyForURI("PYRONAME://publisher1")
 	p2 = Pyro.core.getProxyForURI("PYRONAME://publisher2")
 	p3 = Pyro.core.getProxyForURI("PYRONAME://publisher3")
-	while 1:
-		print "MAIN LOOP CHANGES PROPERTIES..."
-		p1.setProperty(random.choice(string.uppercase), random.randint(0,1000))
-		p2.setProperty(random.choice(string.uppercase), random.randint(0,1000))
-		p3.setProperty(random.choice(string.uppercase), random.randint(0,1000))
-		time.sleep(1)
+	try:
+		while True:
+			print "MAIN LOOP CHANGES PROPERTIES..."
+			p1.setProperty(random.choice(string.uppercase), random.randint(0,1000))
+			p2.setProperty(random.choice(string.uppercase), random.randint(0,1000))
+			p3.setProperty(random.choice(string.uppercase), random.randint(0,1000))
+			time.sleep(1)
+	except Exception,x:
+		print "".join(Pyro.util.getPyroTraceback(x))
 
 if __name__=="__main__":
 	main()
-
-
