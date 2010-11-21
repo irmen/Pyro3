@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: util.py,v 2.52.2.8 2009/07/12 15:38:25 irmen Exp $
+#	$Id: util.py,v 2.52.2.14 2010/05/22 12:00:26 irmen Exp $
 #	Pyro Utilities
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -305,11 +305,16 @@ _getGUID_lock=getLockObject()
 
 if os.name=='java':
 	# define jython specific stuff
-	# first, the guid stuff
-	import java.rmi.dgc
-	def getGUID():
-		# Jython uses java's own ID routine used by RMI
-		return java.rmi.dgc.VMID().toString().replace(':','-').replace('--','-')
+	# first, the guid stuff. try java5 uuid first.
+	try:
+		from java.util import UUID
+		def getGUID():
+			return str(UUID.randomUUID())
+	except ImportError:
+		# older java, use rmi's vmid instead
+		from java.rmi.dgc import VMID
+		def getGUID():
+			return str(VMID().toString().replace(':','-').replace('--','-'))
 	import imp
 	if not hasattr(imp,"acquire_lock"):
 		# simulate missing imp.acquire_lock() from jython 2.2 (fixed in jython 2.5)
@@ -356,8 +361,8 @@ else:
 		t2=int((t1*time.clock())%sys.maxint) & 0xffffff
 		t1=int(t1%sys.maxint) 
 		timestamp = (long(t1) << 24) | t2 
-		r2=(random.randint(0,sys.maxint/2)>>4) & 0xffff
-		r3=(random.randint(0,sys.maxint/2)>>5) & 0xff
+		r2=(random.randint(0,sys.maxint//2)>>4) & 0xffff
+		r3=(random.randint(0,sys.maxint//2)>>5) & 0xff
 		return networkAddrStr+'%014x%06x' % (timestamp, (r2<<8)|r3 )
 
 def genguid_scripthelper(argv):
@@ -468,7 +473,9 @@ def getPyroTraceback(exc_obj):
 		del exc_type, exc_value, exc_trb
 
 
-def formatTraceback(ex_type, ex_value, tb):
+def formatTraceback(ex_type=None, ex_value=None, tb=None):
+	if ex_type is None and tb is None:
+		ex_type,ex_value,tb=sys.exc_info()
 	if Pyro.config.PYRO_DETAILED_TRACEBACK:
 		get_line_number = traceback.tb_lineno
 	
@@ -527,9 +534,9 @@ def formatTraceback(ex_type, ex_value, tb):
 	  
 					res.append("Local values:\n")
 					flocals.sort()
-					
+					fcode=frame.f_code
 					for key, value, in flocals:
-						if key in frame.f_code.co_names:
+						if key in fcode.co_names or key in fcode.co_varnames or key in fcode.co_cellvars:
 							local_res="  %20s = " % key
 							try:
 								local_res += repr(value)

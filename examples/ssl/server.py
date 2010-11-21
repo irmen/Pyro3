@@ -12,7 +12,10 @@ class printCertValidator(Pyro.protocol.BasicSSLValidator):
 	def checkCertificate(self,cert):
 		if cert is None:
 			return (0,3)
-		print "Cert Subject: %s" % cert.get_subject()
+		print "Cert issuer: %s" % cert.get_issuer()
+		print "Cert subject: %s" % cert.get_subject()
+		print "Cert valid not before: %s" % cert.get_not_before()
+		print "Cert valid not after: %s" % cert.get_not_after()
 		return (1,0)
 
 
@@ -55,7 +58,8 @@ daemon.useNameServer(ns)
 try: ns.unregister('ssl')
 except NamingError: pass
 
-daemon.connect(testclass(),'ssl')
+uri=daemon.connect(testclass(),'ssl')
+print "server uri=",uri
 
 # enter the service loop.
 print 'Server object "ssl" ready.'

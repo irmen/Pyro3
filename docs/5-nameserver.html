@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 5-nameserver.html,v 2.33.2.9 2009/12/07 00:31:00 irmen Exp $ -->
+<!-- $Id: 5-nameserver.html,v 2.33.2.11 2010/11/14 21:32:43 irmen Exp $ -->
 <head>
   <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
   <title>PYRO - Name Server</title>
@@ -48,7 +48,7 @@
   <dl>
     <dt><code>pyro-ns</code> &nbsp;&nbsp;(Name Server)</dt>
 
-    <dd>- Arguments: [-h] [-k] [-m] [-r] [-x] [-n hostname] [-p port] [-b bcport] [-c bcaddr] [-i identification] [-d [databasefile]] [-s
+    <dd>- Arguments: [-h] [-k] [-m] [-r] [-x] [-n hostname] [-p port] [-b bcport] [-c bcaddr] [-i identification] [-d [databaselocation]] [-s
     securitymodule] [-1 [host:port]] [-2 [host:port]] [-v]<br>
     - Starts the Pyro Name Server. The '-h' argument prints some help, '-k' makes it immune to shutdown requests (a
     crude form of security against malicious shutdown requests), '-m' allows multiple Name Servers to be started in the
@@ -60,23 +60,15 @@
     specifies the broadcast port number. '-c ipaddress' specifies a broadcast listener ip address override.
     With '-i identification' you can supply the authentication passphrase that
     will be required to connect to this server. When it contains spaces, use quotes around it. '-d' starts the
-    persistent server. You can provide an optional filename to the last option to specify the database file. The '-s'
+    persistent server. You can provide an optional name to specify the database location (directory). The '-s'
     option specifies the Python module for security plugins (make sure it is in your PYTHONPATH). Use '-v' to enable
     slightly more verbose output.<br>
     The '-1' and '-2' options are used for <em>paired</em> mode. More info <a href="#paired">below</a>.<br>
     <br></dd>
 
-    <dt><code>pyro-rns</code> &nbsp;&nbsp;(Restarting Name Server)</dt>
+    <dt><code>pyro-ns.cmd</code></dt>
 
-    <dd>This is very much the same as the <code>ns</code> command but the script will restart the name server if it
-    quits or crashes. Do not confuse this with the <code>-d</code> argument, which will start a Name Server that has
-    its database persistent on disk. Of course it is very useful to combine the <code>rns</code> with the
-    <code>-d</code> switch!!!<br>
-    <br></dd>
-
-    <dt><code>pyro-ns.cmd, pyro-rns.cmd</code></dt>
-
-    <dd>The Windows scripts for the above.<br>
+    <dd>The Windows script for the above.<br>
     <br></dd>
 
     <dt><code>pyro-nssvc</code> &nbsp;&nbsp;(Windows-only Name Server 'NT-service' control script)</dt>
@@ -192,11 +184,14 @@
   <p>The persistent NS stores its naming database on disk. Currently this is implemented the easy way;
       there is a direct mapping between the group names and directories on disk, and between object names
       + URIs and files in these directories on disk. The database by default is stored in a &quot;Pyro_NS_database&quot;
-      directory that is created in the directory configured by <code>PYRO_STORAGE</code>. There is a
-      special option for the script that specifies another location, if needed.</p>
+      directory that is created in the directory configured by <code>PYRO_STORAGE</code>.
+      You can specify a different name if needed (with the '-d' option of the name server start script,
+      and a parameter to the start method of the <code>NameServerStarter</code> class in the code).
+      </p>
 
   <p>Usually you don't access the <code>NameServer</code> or <code>PersistentNameServer</code> classes directly: there
-  are scripts to start the right name server.</p>
+  are scripts to start the right name server. Or you use the <code>NameServerStarter</code> helper class from the 
+  <code>Pyro.naming</code> module.</p>
 
   <h3>Connecting objects to the Pyro Daemon with persistent naming</h3>Usually you'll use the <code>connect</code>
   method of the daemon to connect your object instances to the daemon on the server. The daemon will register your

@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: naming.py,v 2.64.2.25 2009/07/12 15:38:25 irmen Exp $
+#	$Id: naming.py,v 2.64.2.27 2010/11/14 21:32:42 irmen Exp $
 #	Pyro Name Server
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -197,7 +197,7 @@ class NameServerProxy(object):
 		self.adapter = Pyro.protocol.getProtocolAdapter(self.URI.protocol)
 		self.adapter.setIdentification(identification)
 		if noconnect:
-			self.adapter.URI=URI.clone()
+			self.adapter.URI=URI
 		else:
 			self.adapter.bindToURI(URI)
 		self.adapter.setOneway(["_synccall"])
@@ -1027,7 +1027,6 @@ class PersistentNameSpaceNode(NameSpaceNode):
 		NameSpaceNode.__init__(self, name, meta, owner)
 		self.filename=filename
 		if not name:
-			# print "INIT PERSISTENT NODE FROM FILE",self.filename
 			# init from file
 			try:
 				(sysmeta, usermeta)=Pyro.util.getPickle().load(open(self.filename,"rb"))
@@ -1036,7 +1035,6 @@ class PersistentNameSpaceNode(NameSpaceNode):
 			except Exception:
 				pass # just use empty meta...
 		else:
-			# write to file
 			self._writeToFile()
 	def setMeta(self,meta):
 		NameSpaceNode.setMeta(self, meta)
@@ -1045,7 +1043,6 @@ class PersistentNameSpaceNode(NameSpaceNode):
 		NameSpaceNode.setSystemMeta(self, meta)
 		self._writeToFile()
 	def _writeToFile(self):
-		# print "WRITE PERSISTENT NODE TO FILE",self.filename
 		Pyro.util.getPickle().dump( (self.getSystemMeta(), self.getMeta()) , open(self.filename,"wb"), Pyro.config.PYRO_PICKLE_FORMAT)
 		
 
@@ -1145,6 +1142,7 @@ class BCReqValidator(object):
 class NameServerStarter(object):
 	def __init__(self, identification=None):
 		Pyro.core.initServer()
+		self.persistent=False
 		self.identification=identification
 		self.started = Pyro.util.getEventObject()
 	def start(self, *args, **kwargs):			# see _start for allowed arguments
@@ -1233,10 +1231,12 @@ class NameServerStarter(object):
 			ns=PersistentNameServer(dbdir,role=role[0], identification=self.identification)
 			daemon.useNameServer(ns)
 			NS_URI=daemon.connectPersistent(ns,Pyro.constants.NAMESERVER_NAME)
+			self.persistent=True
 		else:
 			ns=NameServer(role=role[0], identification=self.identification)
 			daemon.useNameServer(ns)
 			NS_URI=daemon.connect(ns,Pyro.constants.NAMESERVER_NAME)
+			self.persistent=False
 
 		self.bcserver=None
 		if nobroadcast:
@@ -1433,7 +1433,8 @@ class NameServerStarter(object):
 			ns=daemon.getNameServer()
 			del self.daemon
 		ns._removeTwinNS()
-		daemon.disconnect(ns) # clean up nicely
+		if not self.persistent:
+			daemon.disconnect(ns) # clean up nicely only if not running in persistent mode
 		if self.bcserver:
 			self.bcserver.shutdown=1
 		daemon.shutdown()
@@ -1443,7 +1444,7 @@ def main(argv):
 	Args.parse(argv,'hkmrvxn:p:b:c:d:s:i:1:2:')
 	if Args.hasOpt('h'):
 		print 'Usage: pyro-ns [-h] [-k] [-m] [-r] [-x] [-n hostname] [-p port] [-b bcport] [-c bcaddr]'
-		print '          [-i identification] [-d [databasefile]] [-s securitymodule]'
+		print '          [-i identification] [-d [databaselocation]] [-s securitymodule]'
 		print '          [-1 [host:port]] [-2 [host:port]] [-v]'
 		print '  where -p = NS server port (0 for auto)'
 		print '        -n = non-default hostname to bind on'

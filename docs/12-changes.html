@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- $Id: 12-changes.html,v 2.119.2.37 2009/12/07 00:31:00 irmen Exp $ -->
+<!-- $Id: 12-changes.html,v 2.119.2.45 2010/05/22 16:39:21 irmen Exp $ -->
 <head>
   <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
   <title>PYRO - Change Log</title>
@@ -91,7 +91,7 @@
 	<li>3.9.1: fixed invalid uri crash when starting nameserver in persistent mode</li>
    </ul>
 
-  <h3><a name="latest" id="latest"></a>Pyro 3.10</h3>
+  <h3>Pyro 3.10</h3>
    <ul>
     <li>fixed localStorage for oneway calls</li>
     <li>unified PYROSSL_SERVER_CERT and PYROSSL_CLIENT_CERT into PYROSSL_CERT config item (this change is not backwards compatible; you'll have to update your code if you're using Pyro's SSL support)</li>
@@ -106,6 +106,23 @@
    	<li>Moved the EventServer's Event class to a separate module to avoid import errors</li>
    </ul>
    
+  <h3><a name="latest" id="latest"></a>Pyro 3.11</h3>
+    <ul>
+    <li>fixed java import for Jython standalone</li>
+    <li>use java5 UUID if available, instead of rmi vmid, in Jython</li>
+    <li>locals are printed again in formatTraceback() on recent python versions</li>
+    <li>scripts are now python scripts instead of shell scripts (not on Windows). This should be helpful for virtualenv users.</li>
+    <li>The pyro-rns script is gone.</li>
+    <li>added a connections test to the 'benchmark' example</li>
+    <li>fix safe_select in protocol.py to not wait longer than specified timeout</li>
+    <li>initTLS is now called properly on new threads spawned for oneway calls</li>
+    <li>initTLS is now called in the context of the new thread instead of the parent thread. This fixes obscure thread initialization issues (could break COM).</li>
+    <li>added 'tlstest' example to check if initTLS behaves as it should</li>
+    <li>nameserver URI is no longer cleared when the NS shuts down, if it is running in persistent mode. Restarting the NS in persistent mode will now reuse the old URI.</li>
+    <li>fixed threadsafety of PYROLOC uri resolving. (could cause 'unknown object id' exceptions)</li>
+    <li>fixed threadsafety of Pyro SSL adapter.</li> 
+    </ul>
+
   <div class="nav">
   <hr>
   <table width="100%">

@@ -55,7 +55,7 @@ class Server(Thread):
 		self.ns_sockets=[]
 		self.es_starter=None
 		self.es_sockets=[]
-		self.daemon=None
+		self.pdaemon=None
 		# daemon sockets are dynamic...
 		self.listener=None
 		self.listener_sockets=[]
@@ -67,8 +67,8 @@ class Server(Thread):
 		starter.waitUntilStarted()
 		self.es_starter=starter
 		self.es_sockets=starter.getServerSockets()
-	def setPyroDaemon(self, daemon):
-		self.daemon=daemon
+	def setPyroDaemon(self, pdaemon):
+		self.pdaemon=pdaemon
 	def setEventListener(self, listener):
 		self.listener=listener
 		self.listener_sockets=listener.getDaemon().getServerSockets()
@@ -77,9 +77,9 @@ class Server(Thread):
 		while 1:
 			all_sockets = self.ns_sockets + self.es_sockets + self.listener_sockets
 			daemon_sockets=[]
-			if self.daemon:
+			if self.pdaemon:
 				# daemon sockets are dynamic.
-				daemon_sockets = self.daemon.getServerSockets()
+				daemon_sockets = self.pdaemon.getServerSockets()
 				all_sockets.extend(daemon_sockets)
 
 			################### CUSTOM EVENT LOOP ####################
@@ -106,7 +106,7 @@ class Server(Thread):
 			# check for Daemon Server sockets....
 			for d_sock in daemon_sockets:
 				if d_sock in ins:
-					self.daemon.handleRequests(timeout=0)
+					self.pdaemon.handleRequests(timeout=0)
 					break
 			# check for Event listener sockets...
 			for l_sock in self.listener_sockets:

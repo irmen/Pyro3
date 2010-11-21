@@ -11,6 +11,7 @@ the events that it receives.
 
 
 allinone_threads.py: uses THREADS to run everything concurrently.
+allinone_ownloop.py: uses a CUSTOM EVENT LOOP for everything.
 
 
 NOTE: no Name Server must be running.

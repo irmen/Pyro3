@@ -1,6 +1,6 @@
 #############################################################################
 #
-#	$Id: protocol.py,v 2.94.2.38 2009/12/06 17:16:47 irmen Exp $
+#	$Id: protocol.py,v 2.94.2.40 2010/05/22 16:31:10 irmen Exp $
 #	Pyro Protocol Adapters
 #
 #	This is part of "Pyro" - Python Remote Objects
@@ -214,7 +214,6 @@ class PYROAdapter(object):
 		self.release()   # cannot pickle the active connection so just release it
 		d=self.__dict__.copy()
 		del d["lock"]
-		del d["bindlock"]
 		return d
 	def __setstate__(self, state):
 		# restore the pickle state and recreate the unpickleable lock objects
@@ -222,7 +221,6 @@ class PYROAdapter(object):
 		self.__getLockObjects()
 	def __getLockObjects(self):
 		self.lock=Pyro.util.getLockObject()
-		self.bindlock=Pyro.util.getLockObject()
 	def recvAuthChallenge(self, conn):
 		ver,body,pflags = self.receiveMsg(conn)
 		if ver==self.version and len(body)==self.AUTH_CHALLENGE_SIZE:
@@ -240,9 +238,9 @@ class PYROAdapter(object):
 			Log.error('PYROAdapter','incompatible protocol in URI:',URI.protocol)
 			raise ProtocolError('incompatible protocol in URI')
 		try:
-			self.bindlock.acquire()   # only 1 thread at a time can bind the URI
+			self.lock.acquire()   # only 1 thread at a time can bind the URI
 			try:
-				self.URI=URI.clone()
+				self.URI=URI
 				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				sock.connect((URI.address, URI.port))
 				conn=TCPConnection(sock,sock.getpeername())
@@ -272,7 +270,7 @@ class PYROAdapter(object):
 				Log.msg('PYROAdapter','connection failed to URI',str(URI))
 				raise ProtocolError('connection failed')
 		finally:
-			self.bindlock.release()
+			self.lock.release()
 
 	def resolvePYROLOC_URI(self, newProtocol):
 		# This method looks up the object URI referenced by
@@ -281,7 +279,7 @@ class PYROAdapter(object):
 		Log.msg('PYROAdapter','resolving PYROLOC name: ',objectName)
 		# call the special Resolve method on the daemon itself:
 		self.URI.objectID=Pyro.constants.INTERNAL_DAEMON_GUID
-		result=self.remoteInvocation('ResolvePYROLOC',0,objectName)
+		result=self._remoteInvocation('ResolvePYROLOC',0,objectName)
 		# found it, switching to regular pyro protocol
 		self.URI.objectID=result
 		self.URI.protocol=newProtocol
@@ -655,15 +653,17 @@ class PYROAdapter(object):
 			# Do the invocation. We are already running in our own thread.
 			if req[2]&Pyro.constants.RIF_Oneway and Pyro.config.PYRO_ONEWAY_THREADED and daemon.threaded:
 				# received a oneway call, run this in its own thread.
-				thread=Thread(target=self._handleInvocation2, args=(daemon,req,pflags,conn,o))
+				thread=Thread(target=self._handleInvocation2, args=(daemon,req,pflags,conn,o,True))
 				thread.setDaemon(1)   # thread must exit at program termination.
-				thread.localStorage=daemon.getLocalStorage()   # set local storage for the new thread
+				thread.localStorage=LocalStorage()   # set local storage for the new thread
 				thread.start()
 			else:
 				# not oneway or not in threaded mode, just do the invocation synchronously
-				self._handleInvocation2(daemon,req,pflags,conn,o)
+				self._handleInvocation2(daemon,req,pflags,conn,o,False)
 
-	def _handleInvocation2(self, daemon, req, pflags, conn, obj):
+	def _handleInvocation2(self, daemon, req, pflags, conn, obj, mustInitTLS=False):
+		if mustInitTLS:
+			daemon.initTLS(daemon.getLocalStorage())
 		try:
 			flags=req[2]
 			importer=None
@@ -809,30 +809,34 @@ class PYROSSLAdapter(PYROAdapter):
 			Log.error('PYROSSLAdapter','incompatible protocol in URI:',URI.protocol)
 			raise ProtocolError('incompatible protocol in URI')
 		try:
-			self.URI=URI.clone()
-			sock = SSL.Connection(self.ctx,socket.socket(socket.AF_INET, socket.SOCK_STREAM))
-			if not Pyro.config.PYROSSL_POSTCONNCHECK:
-				sock.postConnectionCheck=None
-			sock.connect((URI.address, URI.port))
-			conn=TCPConnection(sock, sock.getpeername())
-			# receive the authentication challenge string, and use that to build the actual identification string.
-			authChallenge=self.recvAuthChallenge(conn)
-			# reply with our ident token, generated from the ident passphrase and the challenge
-			msg = self._sendConnect(sock,self.newConnValidator.createAuthToken(self.ident, authChallenge, conn.addr, self.URI, None) )
-			if msg==self.acceptMSG:
-				self.conn=conn
-				self.conn.connected=1
-				Log.msg('PYROSSLAdapter','connected to',str(URI))
-				if URI.protocol=='PYROLOCSSL':
-					self.resolvePYROLOC_URI("PYROSSL") # updates self.URI
-			elif msg[:len(self.denyMSG)]==self.denyMSG:
-				try:
-					raise ConnectionDeniedError(Pyro.constants.deniedReasons[int(msg[-1])])
-				except (KeyError,ValueError):
-					raise ConnectionDeniedError('invalid response')
-		except socket.error:
-			Log.msg('PYROSSLAdapter','connection failed to URI',str(URI))
-			raise ProtocolError('connection failed')
+			self.lock.acquire()   # only 1 thread at a time can bind the URI
+			try:
+				self.URI=URI
+				sock = SSL.Connection(self.ctx,socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+				if not Pyro.config.PYROSSL_POSTCONNCHECK:
+					sock.postConnectionCheck=None
+				sock.connect((URI.address, URI.port))
+				conn=TCPConnection(sock, sock.getpeername())
+				# receive the authentication challenge string, and use that to build the actual identification string.
+				authChallenge=self.recvAuthChallenge(conn)
+				# reply with our ident token, generated from the ident passphrase and the challenge
+				msg = self._sendConnect(sock,self.newConnValidator.createAuthToken(self.ident, authChallenge, conn.addr, self.URI, None) )
+				if msg==self.acceptMSG:
+					self.conn=conn
+					self.conn.connected=1
+					Log.msg('PYROSSLAdapter','connected to',str(URI))
+					if URI.protocol=='PYROLOCSSL':
+						self.resolvePYROLOC_URI("PYROSSL") # updates self.URI
+				elif msg[:len(self.denyMSG)]==self.denyMSG:
+					try:
+						raise ConnectionDeniedError(Pyro.constants.deniedReasons[int(msg[-1])])
+					except (KeyError,ValueError):
+						raise ConnectionDeniedError('invalid response')
+			except socket.error:
+				Log.msg('PYROSSLAdapter','connection failed to URI',str(URI))
+				raise ProtocolError('connection failed')
+		finally:
+			self.lock.release()
 
 	def _sendConnect(self, sock, ident):
 		return PYROAdapter._sendConnect(self, sock, ident)
@@ -1031,6 +1035,7 @@ class TCPServer(object):
 	def connectionHandler(self, conn):
 		# Handle the connection and all requests that arrive on it.
 		# This is only called in multithreading mode.
+		self.initTLS(self.getLocalStorage())
 		try:
 			if self.getAdapter().handleConnection(conn, self):
 				Log.msg('TCPServer','new connection ',conn, ' #conns=',len(self.connections))
@@ -1142,7 +1147,6 @@ class TCPServer(object):
 			thread=Thread(target=self.connectionHandler, args=(conn,))
 			thread.setDaemon(1)   # thread must exit at program termination.
 			thread.localStorage=LocalStorage()
-			self.initTLS(thread.localStorage)
 			self.connections.append(thread)
 			thread.start()
 		elif callback:
@@ -1184,14 +1188,17 @@ _selectfunction=select.select
 if os.name=="java":
 	from select import cpython_compatible_select as _selectfunction
 def safe_select(r,w,e,timeout=None):
+	delay=timeout
 	while True:
 		try:
-			if timeout is not None:
-				return _selectfunction(r,w,e,timeout)
+			# Make sure we don't delay longer than requested
+			start=time.time()
+			if delay is not None:
+				return _selectfunction(r,w,e,delay)
 			else:
 				return _selectfunction(r,w,e)
 		except select.error,x:
 			if x.args[0] == errno.EINTR or (hasattr(errno, 'WSAEINTR') and x.args[0] == errno.WSAEINTR):
-				pass
+				delay=max(0.0,time.time()-start)
 			else:
 				raise

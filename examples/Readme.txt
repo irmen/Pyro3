@@ -45,6 +45,7 @@ stockquotes       - shows the use of the Event Service for stock quotes
 stresstest        - stress testing for Pyro, the NS, and the ES.
 testmobile        - various tests of the mobile code features
 timeout           - shows socket timeout handling
+tlstest           - test program to check if TLS is being initialized properly (including COM)
 threadmobile      - technical multithreading test of Pyro's mobile code import logic
 user_passwd_auth  - shows how to do username + password type connection validation.
 
