@@ -449,55 +449,67 @@ class PYROAdapter(object):
 		if method in self.onewayMethods:
 			flags |= Pyro.constants.RIF_Oneway
 		body=pickle.dumps((self.URI.objectID,method,flags,args),Pyro.config.PYRO_PICKLE_FORMAT)
-		sock_sendmsg(self.conn.sock, self.createMsg(body), self.timeout)
-		if flags & Pyro.constants.RIF_Oneway:
-			return None		# no answer required, return immediately
-		ver,answer,pflags = self.receiveMsg(self.conn,1)  # read the server's response, send no further replies
-		if answer is None:
-			raise ProtocolError('incorrect answer received')
-
-		# Try to get the answer from the server.
-		# If there are import problems, try to get those modules from
-		# the server too (if mobile code is enabled).
-		if not Pyro.config.PYRO_MOBILE_CODE:
-			answer = pickle.loads(answer)
+		try:
+			sock_sendmsg(self.conn.sock, self.createMsg(body), self.timeout)
+		except (socket.error, ProtocolError, KeyboardInterrupt):
+			# Communication error during write. To avoid corrupt transfers, we close the connection.
+			# Otherwise we might receive the previous reply as a result of a new methodcall! 
+			# Special case for keyboardinterrupt: people pressing ^C to abort the client
+			# may be catching the keyboardinterrupt in their code. We should probably be on the
+			# safe side and release the proxy connection in this case too, because they might
+			# be reusing the proxy object after catching the exception...
+			sys.stderr.write("*********************** ERROR IN SOCK SEND *************") #XXX
+			self.release()
+			raise
 		else:
-			importer=None
-			try:
-				imp.acquire_lock()
-				loaded = 0
-				# XXX maxtries here...
-				while not loaded:
-					# install a custom importer to intercept any extra needed modules
-					# when unpickling the answer just obtained from the server
-					imp.acquire_lock()
-					importer = agent_import(__builtin__.__import__)
-					__builtin__.__import__ = importer
-					imp.release_lock()
- 
-					try:
-						answer = pickle.loads(answer)
-						loaded = 1
-					except ImportError:
-						mname = importer.name
-						if importer is not None:
-							__builtin__.__import__ = importer.orig_import
-							importer = None
-							self._retrieveCode(mname, 0)
- 
-			finally:
-				if importer is not None:
-					__builtin__.__import__ = importer.orig_import
-				imp.release_lock()
-
-		if isinstance(answer,PyroExceptionCapsule):
-			if isinstance(answer.excObj,_InternalNoModuleError):
-				# server couldn't load the module, send it
-				return self.processMissingModuleError(answer.excObj, method, flags, args)
+			if flags & Pyro.constants.RIF_Oneway:
+				return None		# no answer required, return immediately
+			ver,answer,pflags = self.receiveMsg(self.conn,1)  # read the server's response, send no further replies
+			if answer is None:
+				raise ProtocolError('incorrect answer received')
+	
+			# Try to get the answer from the server.
+			# If there are import problems, try to get those modules from
+			# the server too (if mobile code is enabled).
+			if not Pyro.config.PYRO_MOBILE_CODE:
+				answer = pickle.loads(answer)
 			else:
-				# we have an encapsulated exception, raise it again.
-				answer.raiseEx()
-		return answer
+				importer=None
+				try:
+					imp.acquire_lock()
+					loaded = 0
+					# XXX maxtries here...
+					while not loaded:
+						# install a custom importer to intercept any extra needed modules
+						# when unpickling the answer just obtained from the server
+						imp.acquire_lock()
+						importer = agent_import(__builtin__.__import__)
+						__builtin__.__import__ = importer
+						imp.release_lock()
+	 
+						try:
+							answer = pickle.loads(answer)
+							loaded = 1
+						except ImportError:
+							mname = importer.name
+							if importer is not None:
+								__builtin__.__import__ = importer.orig_import
+								importer = None
+								self._retrieveCode(mname, 0)
+	 
+				finally:
+					if importer is not None:
+						__builtin__.__import__ = importer.orig_import
+					imp.release_lock()
+	
+			if isinstance(answer,PyroExceptionCapsule):
+				if isinstance(answer.excObj,_InternalNoModuleError):
+					# server couldn't load the module, send it
+					return self.processMissingModuleError(answer.excObj, method, flags, args)
+				else:
+					# we have an encapsulated exception, raise it again.
+					answer.raiseEx()
+			return answer
 
 	def processMissingModuleError(self, errorinfo, method, flags, args):
 		# server couldn't load module, supply it
@@ -546,45 +558,55 @@ class PYROAdapter(object):
 		
 	# (private) receives a socket message, returns: (protocolver, message, protocolflags)
 	def receiveMsg(self,conn,noReply=0):
-		msg=sock_recvmsg(conn.sock, self.headerSize, self.timeout)
-		(hid, ver, hsiz, bsiz, pflags, crc) = struct.unpack(self.headerFmt,msg)
-		# store in the connection what pickle method this is
-		if pflags&PFLG_XMLPICKLE_GNOSIS:
-			conn.pflags|=PFLG_XMLPICKLE_GNOSIS
-		if ver!=self.version:
-			msg='incompatible protocol version'
-			Log.error('PYROAdapter',msg)
-			if not noReply:
-				# try to report error to client, but most likely the connection will terminate:
-				self.returnException(conn, ProtocolError(msg))
-			raise ProtocolError(msg)
-		if hid!=self.headerID or hsiz!=self.headerSize:
-			msg='invalid header'
-			Log.error('PYROAdapter',msg)
-			Log.error('PYROAdapter','INVALID HEADER DETAILS: ',conn,( hid, ver, hsiz, bsiz,pflags))
-			if not noReply:
-				# try to report error to client, but most likely the connection will terminate:
-				self.returnException(conn, ProtocolError(msg), shutdown=1)
-			raise ProtocolError(msg)
-		body=sock_recvmsg(conn.sock, bsiz, self.timeout)
-		if pflags&PFLG_CHECKSUM:
-			if _has_compression:
-				if crc!=zlib.adler32(body):
-					msg='checksum error'
-					Log.error('PYROAdapter',msg)
-					if not noReply:
-						self.returnException(conn, ProtocolError(msg))
-					raise ProtocolError(msg)
-			else:
-				raise ProtocolError('cannot perform checksum')
-		if pflags&PFLG_COMPRESSED:
-			if _has_compression:
-				body=zlib.decompress(body)
-			else:
-				# We received a compressed message but cannot decompress.
-				# Is this really a server error? We now throw an exception on the server...
-				raise ProtocolError('compression not supported')
-		return ver,body,pflags
+		try:
+			msg=sock_recvmsg(conn.sock, self.headerSize, self.timeout)
+			(hid, ver, hsiz, bsiz, pflags, crc) = struct.unpack(self.headerFmt,msg)
+			# store in the connection what pickle method this is
+			if pflags&PFLG_XMLPICKLE_GNOSIS:
+				conn.pflags|=PFLG_XMLPICKLE_GNOSIS
+			if ver!=self.version:
+				msg='incompatible protocol version'
+				Log.error('PYROAdapter',msg)
+				if not noReply:
+					# try to report error to client, but most likely the connection will terminate:
+					self.returnException(conn, ProtocolError(msg))
+				raise ProtocolError(msg)
+			if hid!=self.headerID or hsiz!=self.headerSize:
+				msg='invalid header'
+				Log.error('PYROAdapter',msg)
+				Log.error('PYROAdapter','INVALID HEADER DETAILS: ',conn,( hid, ver, hsiz, bsiz,pflags))
+				if not noReply:
+					# try to report error to client, but most likely the connection will terminate:
+					self.returnException(conn, ProtocolError(msg), shutdown=1)
+				raise ProtocolError(msg)
+			body=sock_recvmsg(conn.sock, bsiz, self.timeout)
+			if pflags&PFLG_CHECKSUM:
+				if _has_compression:
+					if crc!=zlib.adler32(body):
+						msg='checksum error'
+						Log.error('PYROAdapter',msg)
+						if not noReply:
+							self.returnException(conn, ProtocolError(msg))
+						raise ProtocolError(msg)
+				else:
+					raise ProtocolError('cannot perform checksum')
+			if pflags&PFLG_COMPRESSED:
+				if _has_compression:
+					body=zlib.decompress(body)
+				else:
+					# We received a compressed message but cannot decompress.
+					# Is this really a server error? We now throw an exception on the server...
+					raise ProtocolError('compression not supported')
+			return ver,body,pflags
+		except (socket.error, ProtocolError, KeyboardInterrupt),x:
+			# Communication error during read. To avoid corrupt transfers, we close the connection.
+			# Otherwise we might receive the previous reply as a result of a new methodcall! 
+			# Special case for keyboardinterrupt: people pressing ^C to abort the client
+			# may be catching the keyboardinterrupt in their code. We should probably be on the
+			# safe side and release the proxy connection in this case too, because they might
+			# be reusing the proxy object after catching the exception...
+			self.release() 
+			raise
 
 	def _unpickleRequest(self, pflags, body):
 		if pflags&PFLG_XMLPICKLE_GNOSIS:
