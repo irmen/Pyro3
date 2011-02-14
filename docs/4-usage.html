@@ -648,10 +648,13 @@ For detailed information about these subjects, please refer to the relevant chap
     Pyro provides a simple echo server for you.
 </p>
 <p>
-    The echo server has only one method: <code>echo(args)</code> which will simply return the
-    arguments you passed to it.
+    The echo server has two methods:
 </p>
-<p>The echo server is available in the <code>Pyro.test.echoserver</code> module and recognises a few
+    <ul>
+        <li><code>echo(args)</code> &nbsp; this will simply return the arguments you passed to it.</li>
+        <li><code>error()</code> &nbsp; this will raise a remote exception.</li>
+    </ul>
+<p>The server is available in the <code>Pyro.test.echoserver</code> module and recognises a few
     command line arguments. You can use <code>-h</code> to get some help:
 </p>
 <pre>
@@ -674,7 +677,13 @@ Options:
 &gt;&gt;&gt; e=Pyro.core.getProxyForURI("PYRONAME://:Pyro.test.echoserver")
 &gt;&gt;&gt; e.echo("hello world")
 'hello world'
-&gt;&gt;&gt;    
+
+&gt;&gt;&gt; p.error()
+Traceback (most recent call last):
+  ...
+  ...
+ZeroDivisionError: integer division or modulo by zero
+&gt;&gt;&gt;
 </pre>
 
   <h3><a name="notes" id="notes"></a>Last Notes</h3>Please be sure to read the chapter on <a href=

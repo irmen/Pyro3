@@ -20,7 +20,11 @@ class EchoServer(Pyro.core.ObjBase):
         if self.verbose:
             print ("%s - echo: %s" % (time.asctime(), args))
         return args
-            
+    def error(self):
+        if self.verbose:
+            print ("%s - error: generating exception" % time.asctime())
+        return 1//0   # division by zero error
+
 
 class NameServer(Thread):
 	def __init__(self, hostname):
