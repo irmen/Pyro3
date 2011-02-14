@@ -457,7 +457,6 @@ class PYROAdapter(object):
 			# may be catching the keyboardinterrupt in their code. We should probably be on the
 			# safe side and release the proxy connection in this case too, because they might
 			# be reusing the proxy object after catching the exception...
-			sys.stderr.write("*********************** ERROR IN SOCK SEND *************") #XXX
 			self.release()
 			raise
 		else:
