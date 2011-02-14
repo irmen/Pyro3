@@ -37,6 +37,7 @@
     <li><a href="#runtimectrl">Runtime control and Logging</a></li>
 
     <li><a href="#sessions">Threads, sessions and objects</a></li>
+    <li><a href="#echoserver">Built-in echo server</a></li>
 
     <li><a href="#notes">Last Notes</a></li>
   </ul>
@@ -170,7 +171,7 @@ command files have the '.cmd' extension. </p>
     <dd><code>python -m Pyro.EventService.Server</code> - start the event server</dd>
     <dd><code>python -m Pyro.nsc</code> - start the nsc tool. Also works with xnsc and wxnsc.</dd>
     <dd><code>python -m Pyro.configuration</code> - print a dump of Pyro's active configuration settings.</dd>
-    
+    <dd><code>python -m Pyro.test.echoserver</code> - start the built-in echo server. Use '-h' parameter to get some help.</dd>
   </dl>
   
 
@@ -639,6 +640,42 @@ For detailed information about these subjects, please refer to the relevant chap
 	
 </ul>
 
+
+  <h3><a name="echoserver" id="echoserver"></a>Built-in echo server</h3>
+<p>
+    Sometimes it's convenient to have a minimal Pyro server that you can talk to.
+    To avoid having to write it again and again (even though it's only a couple lines of code),
+    Pyro provides a simple echo server for you.
+</p>
+<p>
+    The echo server has only one method: <code>echo(args)</code> which will simply return the
+    arguments you passed to it.
+</p>
+<p>The echo server is available in the <code>Pyro.test.echoserver</code> module and recognises a few
+    command line arguments. You can use <code>-h</code> to get some help:
+</p>
+<pre>
+$ python -m Pyro.test.echoserver -h
+Usage: echoserver.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  -H HOST, --host=HOST  hostname to bind server on (default=localhost)
+  -p PORT, --port=PORT  port to bind server on
+  -n, --naming          register with nameserver
+  -N, --nameserver      also start a nameserver
+  -v, --verbose         verbose output    
+</pre>
+<p>
+    Once running (try <code>python -m Pyro.test.echoserver -N</code>), you can simply connect to it, given the printed URI strings or object name. For instance:
+</p>
+<pre>
+&gt;&gt;&gt; import Pyro.core
+&gt;&gt;&gt; e=Pyro.core.getProxyForURI("PYRONAME://:Pyro.test.echoserver")
+&gt;&gt;&gt; e.echo("hello world")
+'hello world'
+&gt;&gt;&gt;    
+</pre>
 
   <h3><a name="notes" id="notes"></a>Last Notes</h3>Please be sure to read the chapter on <a href=
   "3-install.html">Configuration</a>, the <a href="5-nameserver.html">Name Server</a> and the chapter about <a href=
