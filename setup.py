@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 #
-# $Id: setup.py,v 2.26.2.5 2009/11/27 23:49:32 irmen Exp $
 # Pyro setup script
 #
 

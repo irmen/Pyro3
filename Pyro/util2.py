@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: util2.py,v 2.2.4.1 2008/05/16 18:34:11 irmen Exp $
 #	Pyro Utilities (part 2, to avoid circular dependencies)
 #	User code should never import this, always use Pyro.util!
 #

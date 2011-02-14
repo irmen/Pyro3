@@ -1,6 +1,5 @@
 #############################################################################
 #  
-#	$Id: remote_nons.py,v 1.5.2.1 2008/06/26 21:19:52 irmen Exp $
 #	simple Pyro connection module, without requiring Pyro's NameServer
 #	(adapted from John Wiegley's remote.py)
 #

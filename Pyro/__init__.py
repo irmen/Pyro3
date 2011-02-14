@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: __init__.py,v 2.10.2.1 2008/05/17 09:56:01 irmen Exp $
 #	Pyro file to make Pyro a package, and to set up configuration.
 #
 #	This is part of "Pyro" - Python Remote Objects

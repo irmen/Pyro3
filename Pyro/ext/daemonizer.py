@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #############################################################################
 #  
-#	$Id: daemonizer.py,v 1.3.2.1 2008/05/05 00:13:03 irmen Exp $
 #	Run Pyro servers as daemon processes on Unix/Linux.
 #	This won't work on other operating systems such as Windows.
 #	Author: Jeff Bauer  (jbauer@rubic.com)

@@ -1,6 +1,5 @@
 #############################################################################
 #  
-#	$Id: Clients.py,v 2.18.2.3 2009/12/06 22:47:19 irmen Exp $
 #	Event Service client base classes
 #
 #	This is part of "Pyro" - Python Remote Objects

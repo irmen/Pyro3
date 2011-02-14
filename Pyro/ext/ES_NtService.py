@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: ES_NtService.py,v 1.4.4.1 2008/05/17 09:56:01 irmen Exp $
 #	An NT service that runs the Pyro Event Service
 #   Author: Syver Enstad  syver-en@online.no
 #

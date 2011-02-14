@@ -1,6 +1,5 @@
 #############################################################################
 #
-#     $Id: remote.py,v 1.6.2.2 2008/06/28 21:45:29 irmen Exp $
 #     simple Pyro connection module, originally written by John Wiegley
 #
 #     This is part of "Pyro" - Python Remote Objects

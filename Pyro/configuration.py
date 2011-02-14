@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: configuration.py,v 2.32.2.17 2009/12/06 17:16:47 irmen Exp $
 #	Sets up Pyro's configuration (Pyro.config).
 #
 #	This is part of "Pyro" - Python Remote Objects

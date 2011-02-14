@@ -1,6 +1,5 @@
 #############################################################################
 #  
-#	$Id: Server.py,v 2.37.2.9 2009/12/06 22:47:19 irmen Exp $
 #	Event Service daemon and server classes
 #
 #	This is part of "Pyro" - Python Remote Objects

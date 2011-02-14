@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: NS_NtService.py,v 1.4.4.2 2008/05/17 09:56:01 irmen Exp $
 #	An NT service that runs the Pyro Name Server
 #   Author: Syver Enstad  syver-en@online.no
 #

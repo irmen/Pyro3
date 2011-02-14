@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: protocol.py,v 2.94.2.40 2010/05/22 16:31:10 irmen Exp $
 #	Pyro Protocol Adapters
 #
 #	This is part of "Pyro" - Python Remote Objects

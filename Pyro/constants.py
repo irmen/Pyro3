@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: constants.py,v 2.32.2.14 2009/12/08 20:59:27 irmen Exp $
 #	Pyro global constants
 #
 #	This is part of "Pyro" - Python Remote Objects

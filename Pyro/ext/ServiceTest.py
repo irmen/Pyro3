@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: ServiceTest.py,v 1.1 2003/03/13 22:00:31 irmen Exp $
 #	A test for the PyroNS_NTService program
 #   Author: Syver Enstad  syver-en@online.no
 #

@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: nsc.py,v 2.19.2.8 2009/07/12 15:38:25 irmen Exp $
 #	Pyro Name Server Control Tool
 #
 #	This is part of "Pyro" - Python Remote Objects

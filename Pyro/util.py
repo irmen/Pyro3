@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: util.py,v 2.52.2.14 2010/05/22 12:00:26 irmen Exp $
 #	Pyro Utilities
 #
 #	This is part of "Pyro" - Python Remote Objects

@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: BasicNTService.py,v 1.6 2005/02/12 00:28:50 irmen Exp $
 #	An NT service that runs the Pyro Name Server
 #   Author: Syver Enstad; syver-en@online.no
 #   Bugfix for recent win32 builds: David Rushby; woodsplitter@rocketmail.com

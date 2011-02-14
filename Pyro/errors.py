@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: errors.py,v 2.19.2.5 2009/12/06 20:26:52 irmen Exp $
 #	Pyro Exception Types
 #
 #	This is part of "Pyro" - Python Remote Objects

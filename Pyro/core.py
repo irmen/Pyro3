@@ -1,6 +1,5 @@
 #############################################################################
 #  
-#	$Id: core.py,v 2.104.2.30 2009/12/06 23:55:26 irmen Exp $
 #	Pyro Core Library
 #
 #	This is part of "Pyro" - Python Remote Objects

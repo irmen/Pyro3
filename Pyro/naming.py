@@ -1,6 +1,5 @@
 #############################################################################
 #
-#	$Id: naming.py,v 2.64.2.27 2010/11/14 21:32:42 irmen Exp $
 #	Pyro Name Server
 #
 #	This is part of "Pyro" - Python Remote Objects

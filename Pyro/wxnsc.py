@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 """
-$Id: wxnsc.py,v 1.10.2.6 2009/03/27 14:30:29 irmen Exp $
-
 A wxPython gui to nsc (Pyro Name Server Control tool).
 This gui doesn't have as many features as the xnsc that ships with Pyro,
 but it has some nice features that the xnsc doesn't have ;)
