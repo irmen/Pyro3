@@ -1,3 +1,4 @@
+from __future__ import with_statement
 import Pyro.core
 import Pyro.util
 
@@ -20,11 +21,8 @@ class Bouncer(Pyro.core.CallbackObjBase):
 
 		print "I'm",self.name,", bouncing back..."
 		message.append(self.name)
-		self.callbackMutex.acquire()
-		try:
+		with self.callbackMutex:
 			result=self.callback.process(message)
-		finally:
-			self.callbackMutex.release()
 		self.count+=1
 		result.insert(0,"passed on from "+self.name+':'+str(self.count))
 		print 'returned from callback'

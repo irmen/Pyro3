@@ -7,6 +7,7 @@
 #
 #############################################################################
 
+from __future__ import with_statement
 import os, sys, traceback
 import time, random, linecache
 import socket, binascii
@@ -16,11 +17,15 @@ from Pyro.util2 import *	# bring in 'missing' util functions
 
 # bogus lock class, for systems that don't have threads.
 class BogusLock(object):
+	def __enter__(self):
+		return self
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		pass
 	def acquire(self): pass
 	def release(self): pass
 
 def getLockObject():	
-	if supports_multithreading():
+	if supports_multithreading(): # XXX
 		from threading import Lock
 		return Lock()
 	else:
@@ -147,16 +152,12 @@ else:
 		def error(self,source,*args):
 			if self._checkTraceLevel(1): self._trace('ERR!',source, args)
 		def raw(self,str):
-			self.lock.acquire()
-			try:
+			with self.lock:
 				f=open(self._logfile(),'a')
 				f.write(str)
 				f.close()
-			finally:
-				self.lock.release()
 		def _trace(self,typ,source, arglist):
-			self.lock.acquire()
-			try:
+			with self.lock:
 				if not arglist:
 					(arglist, source) = ([source], "N/A")
 				try:
@@ -174,8 +175,6 @@ else:
 					tf.close()
 				except Exception,x:
 					pass
-			finally:
-				self.lock.release()
 		def _logfile(self):
 			raise NotImplementedError,'must override'
 		def _checkTraceLevel(self,level):
@@ -213,15 +212,12 @@ class DirLister(object):
 		self.__listdir_cache = {}
 
 	def __call__(self,path):
-		self.lock.acquire()
-		try:
+		with self.lock:
 			try:
 				cached_mtime, files, directories = self.__listdir_cache[path]
 				del self.__listdir_cache[path]
 			except KeyError:
 				cached_mtime, files, directories = -1, [], []
-		finally:
-			self.lock.release()
 		mtime = os.stat(path)[8]
 		if mtime <> cached_mtime:
 			files=[]
@@ -231,12 +227,9 @@ class DirLister(object):
 					directories.append(e)
 				else:
 					files.append(e)
-		self.lock.acquire()
-		try:
+		with self.lock:
 			self.__listdir_cache[path] = mtime, files, directories
 			return files,directories
-		finally:
-			self.lock.release()
 
 listdir = DirLister()		# callable object		
 
@@ -352,11 +345,10 @@ else:
 			ip += id(getGUID)
 			networkAddrStr = "%08lx%04x" % (ip, os.getpid())
 	
-		_getGUID_lock.acquire()  # cannot generate multiple GUIDs at once
-		global _getGUID_counter
-		t1=time.time()*100 +_getGUID_counter
-		_getGUID_counter+=1 
-		_getGUID_lock.release()
+		with _getGUID_lock:  # cannot generate multiple GUIDs at once
+			global _getGUID_counter
+			t1=time.time()*100 +_getGUID_counter
+			_getGUID_counter+=1 
 		t2=int((t1*time.clock())%sys.maxint) & 0xffffff
 		t1=int(t1%sys.maxint) 
 		timestamp = (long(t1) << 24) | t2 

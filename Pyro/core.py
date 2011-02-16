@@ -7,6 +7,7 @@
 #
 #############################################################################
 
+from __future__ import with_statement
 import sys, time, re, os, weakref
 import imp, marshal, new, socket
 from pickle import PicklingError
@@ -215,11 +216,8 @@ class SynchronizedObjBase(ObjBase):
         ObjBase.__init__(self)
         self.synlock=Pyro.util.getLockObject()
     def Pyro_dyncall(self, method, flags, args):
-        self.synlock.acquire()  # synchronize method invocation
-        try:
+        with self.synlock:
             return ObjBase.Pyro_dyncall(self, method,flags,args)
-        finally:
-            self.synlock.release()
 
 
 # Use this class instead if you're using callback objects and you
@@ -586,8 +584,7 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 	def __disconnectObjects(self):
 		# server shutting down, unregister all known objects in the NS
 		if self.NameServer and Pyro and Pyro.constants:
-			self.nscallMutex.acquire()
-			try:
+			with self.nscallMutex:
 				if Pyro.constants.INTERNAL_DAEMON_GUID in self.implementations:
 					del self.implementations[Pyro.constants.INTERNAL_DAEMON_GUID]
 				if self.implementations:
@@ -601,8 +598,6 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 							except Exception,x:
 								Log.warn('Daemon','Error while unregistering object during shutdown:',x)
 				self.implementations={}
-			finally:
-				self.nscallMutex.release()
 
 	def __del__(self):
 		self.__disconnectObjects() # unregister objects
@@ -669,8 +664,7 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 		# when a persistent entry is found in the NS, that URI is
 		# used instead of the supplied one, if the address matches.
 		if name and self.NameServer:
-			self.nscallMutex.acquire()
-			try:
+			with self.nscallMutex:
 				try:
 					newURI = PyroURI(self.hostname, obj.GUID(), prtcol=self.protocol, port=self.port)
 					URI=self.NameServer.resolve(name)
@@ -689,8 +683,6 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 						except NamingError: pass
 				except NamingError:
 					pass
-			finally:
-				self.nscallMutex.release()
 		# Register normally.		
 		self.persistentConnectedObjs.append(obj.GUID())
 		return self.connect(obj, name)
@@ -699,14 +691,11 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 		URI = PyroURI(self.hostname, obj.GUID(), prtcol=self.protocol, port=self.port)
 		# if not transient, register the object with the NS
 		if name:
-			self.nscallMutex.acquire()
-			try:
+			with self.nscallMutex:
 				if self.NameServer:
 					self.NameServer.register(name, URI)
 				else:
 					Log.warn('Daemon','connecting object without name server specified:',name)
-			finally:
-				self.nscallMutex.release()
 		# enter the (object,name) in the known implementations dictionary
 		self.implementations[obj.GUID()]=(obj,name)
 		obj.setPyroDaemon(self)
@@ -721,12 +710,9 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 			if obj_uid==Pyro.constants.INTERNAL_DAEMON_GUID:
 				return   # never allow to remove ourselves from the registry
 			if self.NameServer and self.implementations[obj_uid][1]:
-				self.nscallMutex.acquire()
-				try:
+				with self.nscallMutex:
 					# only unregister with NS if it had a name (was not transient)
 					self.NameServer.unregister(self.implementations[obj_uid][1])
-				finally:
-					self.nscallMutex.release()
 			del self.implementations[obj_uid]
 			if obj_uid in self.persistentConnectedObjs:
 				self.persistentConnectedObjs.remove(obj_uid)
@@ -751,16 +737,13 @@ class Daemon(Pyro.protocol.TCPServer, ObjBase):
 	def reapUnusedTransients(self):
 		if not self.transientsCleanupAge: return
 		now=time.time()
-		self.transientsMutex.acquire()
-		try:
+		with self.transientsMutex:
 			for (obj,name) in self.implementations.values()[:]:   # use copy of list
 				if not name:
 					# object is transient, reap it if timeout requires so.
 					if (now-obj.lastUsed)>self.transientsCleanupAge:
 						self.disconnect(obj)
 						obj._gotReaped()
-		finally:
-			self.transientsMutex.release()
 
 	def handleError(self,conn,onewaycall=False):			# overridden from TCPServer
 		try:

@@ -7,6 +7,7 @@
 #
 #############################################################################
 
+from __future__ import with_statement
 import socket, struct, os, time, sys, hmac, types, random, errno, select
 import imp, marshal, new, __builtin__
 try:
@@ -236,8 +237,7 @@ class PYROAdapter(object):
 		if URI.protocol not in ('PYRO', 'PYROLOC'):
 			Log.error('PYROAdapter','incompatible protocol in URI:',URI.protocol)
 			raise ProtocolError('incompatible protocol in URI')
-		try:
-			self.lock.acquire()   # only 1 thread at a time can bind the URI
+		with self.lock:   # only 1 thread at a time can bind the URI
 			try:
 				self.URI=URI
 				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -268,8 +268,6 @@ class PYROAdapter(object):
 			except socket.error:
 				Log.msg('PYROAdapter','connection failed to URI',str(URI))
 				raise ProtocolError('connection failed')
-		finally:
-			self.lock.release()
 
 	def resolvePYROLOC_URI(self, newProtocol):
 		# This method looks up the object URI referenced by
@@ -432,11 +430,9 @@ class PYROAdapter(object):
 		return answer
 
 	def remoteInvocation(self, method, flags, *args):
-		try:
-			self.lock.acquire() # only 1 thread at a time may use this connection to call a remote method
+		with self.lock:
+			# only 1 thread at a time may use this connection to call a remote method
 			return self._remoteInvocation(method, flags, *args)
-		finally:
-			self.lock.release()
 
 	def _remoteInvocation(self, method, flags, *args):
 		if 'conn' not in self.__dict__.keys():
@@ -828,8 +824,7 @@ class PYROSSLAdapter(PYROAdapter):
 		if URI.protocol not in ('PYROSSL','PYROLOCSSL'):
 			Log.error('PYROSSLAdapter','incompatible protocol in URI:',URI.protocol)
 			raise ProtocolError('incompatible protocol in URI')
-		try:
-			self.lock.acquire()   # only 1 thread at a time can bind the URI
+		with self.lock:   # only 1 thread at a time can bind the URI
 			try:
 				self.URI=URI
 				sock = SSL.Connection(self.ctx,socket.socket(socket.AF_INET, socket.SOCK_STREAM))
@@ -855,8 +850,6 @@ class PYROSSLAdapter(PYROAdapter):
 			except socket.error:
 				Log.msg('PYROSSLAdapter','connection failed to URI',str(URI))
 				raise ProtocolError('connection failed')
-		finally:
-			self.lock.release()
 
 	def _sendConnect(self, sock, ident):
 		return PYROAdapter._sendConnect(self, sock, ident)

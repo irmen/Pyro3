@@ -134,7 +134,9 @@ It is strongly advised to upgrade because of this error in older versions.</li>
 
   <h3><a name="latest" id="latest"></a>Pyro 3.13</h3>
 <ul>
+<li>Minimum supported Python version is now 2.5.</li>	
 <li>Added a built-in echo server for test purposes (Pyro.test.echoserver, see chapter 'Usage' for more info)</li>
+<li>Replaced try...except around lock objects with context manager style 'with' statements to avoid deadlocks or other locking related problems.</li>
 </ul>
 
   <div class="nav">

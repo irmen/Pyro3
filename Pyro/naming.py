@@ -7,6 +7,7 @@
 #
 #############################################################################
 
+from __future__ import with_statement
 import sys, os, socket, time, traceback, errno
 import dircache, shutil, SocketServer
 import Pyro.constants, Pyro.core, Pyro.errors, Pyro.protocol, Pyro.util
@@ -349,8 +350,7 @@ class NameServer(Pyro.core.ObjBase):
 	def register(self,name,URI):
 		(origname,name)=name,self.validateName(name)
 		URI=self.validateURI(URI)
-		self.lock.acquire()
-		try:
+		with self.lock:
 			(group, name)=self.locateGrpAndName(name)
 			if len(name or "")<1:
 				raise Pyro.errors.NamingError('invalid name',origname)
@@ -363,13 +363,10 @@ class NameServer(Pyro.core.ObjBase):
 			except KeyError:
 				Log.msg('NameServer','name already exists:',name)
 				raise Pyro.errors.NamingError('name already exists',name)
-		finally:
-			self.lock.release()
 
 	def unregister(self,name):
 		(origname,name)=name,self.validateName(name)
-		self.lock.acquire()
-		try:
+		with self.lock:
 			(group, name)=self.locateGrpAndName(name)
 			if len(name or "")<1:
 				raise Pyro.errors.NamingError('invalid name',origname)
@@ -382,8 +379,6 @@ class NameServer(Pyro.core.ObjBase):
 			except ValueError:
 				Log.msg('NameServer','attempt to remove a group:',name)
 				raise Pyro.errors.NamingError('is a group, not an object',name)
-		finally:
-			self.lock.release()
 
 	def resolve(self,name):
 		# not thread-locked: higher performance and not necessary.
@@ -402,11 +397,8 @@ class NameServer(Pyro.core.ObjBase):
 
 	def flatlist(self):
 		# return a dump
-		self.lock.acquire()
-		try:
+		with self.lock:
 			r=self.root.flatten()
-		finally:
-			self.lock.release()
 		for i in xrange(len(r)):
 			r[i]=(':'+r[i][0], r[i][1])
 		return r
@@ -423,11 +415,8 @@ class NameServer(Pyro.core.ObjBase):
 			Log.msg("NameServer","resync requested from NS at",twinProxy.URI.address,"port",twinProxy.URI.port)
 			print "Resync requested from NS at",twinProxy.URI.address,"port",twinProxy.URI.port
 			self.otherNS=twinProxy
-			self.lock.acquire()
-			try:
+			with self.lock:
 				return self._getSyncDump()
-			finally:
-				self.lock.release()
 		else:
 			Log.warn("NameServer","resync requested from",twinProxy.URI,"but not running in correct mode")
 			raise Pyro.errors.NamingError("The (other) NS is not running in 'primary' or 'secondary' mode")
@@ -464,8 +453,7 @@ class NameServer(Pyro.core.ObjBase):
 		groupname=self.validateName(groupname)
 		if len(groupname)<2:
 			raise Pyro.errors.NamingError('invalid groupname', groupname)
-		self.lock.acquire()
-		try:
+		with self.lock:
 			(parent,name)=self.locateGrpAndName(groupname)
 			if isinstance(parent,NameValue):
 				raise Pyro.errors.NamingError('parent is no group', groupname)
@@ -475,16 +463,13 @@ class NameServer(Pyro.core.ObjBase):
 				self._dosynccall("createGroup",groupname)
 			except KeyError:
 				raise Pyro.errors.NamingError('group already exists',name)
-		finally:
-			self.lock.release()
 
 	def deleteGroup(self,groupname):
 		groupname=self.validateName(groupname)
 		if groupname==':':
 			Log.msg('NameServer','attempt to deleteGroup root group')
 			raise Pyro.errors.NamingError('not allowed to delete root group')
-		self.lock.acquire()
-		try:
+		with self.lock:
 			(parent,name)=self.locateGrpAndName(groupname)
 			try:
 				parent.cutbranch(name)
@@ -494,8 +479,6 @@ class NameServer(Pyro.core.ObjBase):
 				raise Pyro.errors.NamingError('group not found',groupname)
 			except ValueError:
 				raise Pyro.errors.NamingError('is no group',groupname)
-		finally:
-			self.lock.release()
 			
 	def list(self,groupname):
 		# not thread-locked: higher performance and not necessary.
@@ -800,8 +783,7 @@ class PersistentNameServer(NameServer):
 		origname,name=name,self.validateName(name)
 		URI=self.validateURI(URI)
 		fn=self.translate(name)
-		self.lock.acquire()
-		try:
+		with self.lock:
 			if os.access(fn,os.R_OK):
 				Log.msg('NameServer','name already exists:',name)
 				raise Pyro.errors.NamingError('name already exists',name)
@@ -816,14 +798,11 @@ class PersistentNameServer(NameServer):
 					raise Pyro.errors.NamingError('parent is no group')
 				else:
 					raise Pyro.errors.NamingError(str(x))
-		finally:
-			self.lock.release()
 
 	def unregister(self,name):
 		origname,name=name,self.validateName(name)
 		fn=self.translate(name)
-		self.lock.acquire()
-		try:
+		with self.lock:
 			try:
 				os.remove(fn)
 				self._dosynccall("unregister",origname)
@@ -836,8 +815,6 @@ class PersistentNameServer(NameServer):
 					raise Pyro.errors.NamingError('is a group, not an object',name)
 				else:
 					raise Pyro.errors.NamingError(str(x))
-		finally:
-			self.lock.release()
 			
 	def resolve(self,name):
 		# not thread-locked: higher performance and not necessary.
@@ -856,22 +833,18 @@ class PersistentNameServer(NameServer):
 
 	def flatlist(self):
 		dbroot=self.translate(':')
-		self.lock.acquire()
-		try:
+		with self.lock:
 			flat=[]
 			for f in self._filelist(dbroot,dbroot):
 				f=self._unescapefilename(f)
 				flat.append((f, self.resolve(f)))
 			return flat
-		finally:
-			self.lock.release()
 
 	# --- hierarchical naming support
 	def createGroup(self,groupname):
 		groupname=self.validateName(groupname)
 		dirnam = self.translate(groupname)
-		self.lock.acquire()
-		try:
+		with self.lock:
 			try:
 				os.mkdir(dirnam)
 				self._dosynccall("createGroup",groupname)
@@ -883,8 +856,6 @@ class PersistentNameServer(NameServer):
 					raise Pyro.errors.NamingError('(parent)group not found')
 				else:
 					raise Pyro.errors.NamingError(str(x))
-		finally:
-			self.lock.release()
 
 	def deleteGroup(self,groupname):
 		groupname=self.validateName(groupname)
@@ -892,8 +863,7 @@ class PersistentNameServer(NameServer):
 			Log.msg('NameServer','attempt to deleteGroup root group')
 			raise Pyro.errors.NamingError('not allowed to delete root group')
 		dirnam = self.translate(groupname)
-		self.lock.acquire()
-		try:
+		with self.lock:
 			if not os.access(dirnam,os.R_OK):
 				raise Pyro.errors.NamingError('group not found',groupname)
 			try:
@@ -907,16 +877,13 @@ class PersistentNameServer(NameServer):
 					raise Pyro.errors.NamingError('is no group',groupname)
 				else:
 					raise Pyro.errors.NamingError(str(x))
-		finally:
-			self.lock.release()
 			
 	def list(self,groupname):
 		if not groupname:
 			groupname=':'
 		groupname=self.validateName(groupname)
 		dirnam=self.translate(groupname)
-		self.lock.acquire()
-		try:
+		with self.lock:
 			if os.access(dirnam,os.R_OK):
 				if os.path.isfile(dirnam):
 					raise Pyro.errors.NamingError('is no group',groupname)
@@ -934,8 +901,6 @@ class PersistentNameServer(NameServer):
 								entries.append((objname,1))		# leaf has code 1
 					return entries
 			raise Pyro.errors.NamingError('group not found',groupname)
-		finally:
-			self.lock.release()
 
 
 	# --- private methods follow

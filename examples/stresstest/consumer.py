@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import with_statement
 from Pyro.EventService.Clients import Subscriber
 from Pyro.errors import NamingError
 from threading import Thread
@@ -23,19 +24,18 @@ class TrafficCounter(Subscriber,Thread):
 		# we need a lock on this.
 		# If we don't, it's possible that multiple threads
 		# access the same ES proxy concurrently --> HAVOC.
-		self.lock.acquire()
-		if self.currentPattern:
-			self.unsubscribe(self.subjPrefix+self.currentPattern)
-		try:
-			self.currentPattern=self.patterns.pop()
-			print self.id,'I am now watching for cars heading',self.currentPattern
-			self.subscribe(self.subjPrefix+self.currentPattern)
-		except IndexError:
-			print self.id,'I watched all directions. Start over.'
-			self.patterns=['north','south','east','west']
-			self.currentPattern=self.patterns.pop()
-			self.subscribe(self.subjPrefix+self.currentPattern)
-		self.lock.release()
+		with self.lock:
+			if self.currentPattern:
+				self.unsubscribe(self.subjPrefix+self.currentPattern)
+			try:
+				self.currentPattern=self.patterns.pop()
+				print self.id,'I am now watching for cars heading',self.currentPattern
+				self.subscribe(self.subjPrefix+self.currentPattern)
+			except IndexError:
+				print self.id,'I watched all directions. Start over.'
+				self.patterns=['north','south','east','west']
+				self.currentPattern=self.patterns.pop()
+				self.subscribe(self.subjPrefix+self.currentPattern)
 	def event(self, event):
 		(color,car)=event.msg
 		print self.id,'A',color,car,'went',event.subject[len(self.subjPrefix):]
