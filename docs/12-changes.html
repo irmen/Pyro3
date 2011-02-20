@@ -137,6 +137,7 @@ It is strongly advised to upgrade because of this error in older versions.</li>
 <li>Minimum supported Python version is now 2.5.</li>	
 <li>Added a built-in echo server for test purposes (Pyro.test.echoserver, see chapter 'Usage' for more info)</li>
 <li>Replaced try...except around lock objects with context manager style 'with' statements to avoid deadlocks or other locking related problems.</li>
+<li>Removed a possible deadlocking call in the protocol adapter when it wanted to do a call without a current connection. It will raise an exception now.</li>
 </ul>
 
   <div class="nav">

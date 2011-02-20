@@ -436,11 +436,8 @@ class PYROAdapter(object):
 
 	def _remoteInvocation(self, method, flags, *args):
 		if 'conn' not in self.__dict__.keys():
-			Log.msg('PYROAdapter','no connection, trying to bind again')
-			if 'URI' in self.__dict__.keys():
-				self.bindToURI(self.URI)
-			else:
-				raise ProtocolError('trying to rebind, but was never bound before')
+			Log.error('PYROAdapter','no connection available in remoteinvocation')
+			raise ProtocolError('no connection available in remoteinvocation')
 		if method in self.onewayMethods:
 			flags |= Pyro.constants.RIF_Oneway
 		body=pickle.dumps((self.URI.objectID,method,flags,args),Pyro.config.PYRO_PICKLE_FORMAT)
