@@ -175,6 +175,26 @@ def set_sock_keepalive(sock):
 		except:
 			Pyro.config.PYRO_SOCK_KEEPALIVE=0    # it didn't work--disable keepalives.
 
+# set socket to not inherit in subprocess
+try:
+	import fcntl
+	def set_sock_no_inherit(sock):
+		# Mark the given socket fd as non-inheritable (posix)
+		fd = sock.fileno() 
+		flags = fcntl.fcntl(fd, fcntl.F_GETFD) 
+		fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+except ImportError:
+	# no fcntl available, try the windows version
+	try: 
+		from ctypes import windll, WinError 
+		def set_sock_no_inherit(sock): 
+			# mark the given socket fd as non-inheritable (Windows).
+			if not windll.kernel32.SetHandleInformation(sock.fileno(), 1, 0): 
+				raise WinError() 	
+	except ImportError:
+		# nothing available, define a dummy function
+		def set_sock_no_inherit(sock):
+			pass
 
 #------ PYRO: adapter (default Pyro wire protocol)
 #------ This adapter is for protocol version 4 ONLY
@@ -996,6 +1016,7 @@ class TCPServer(object):
 			# create server socket for new connections
 			self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			set_reuse_addr(self.sock)
+			set_sock_no_inherit(self.sock)
 			self.sock.bind((host,port))
 			self.sock.listen(Pyro.config.PYRO_TCP_LISTEN_BACKLOG)
 			if self._ssl_server:
