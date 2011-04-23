@@ -23,8 +23,11 @@ if __name__ == '__main__' :
 	setup(name="Pyro",
 		version= version,
 		license="MIT",
-		description = "distributed object middleware for Python (IPC/RPC)",
-		long_description = """Pyro stands for PYthon Remote Objects. It is an advanced and powerful Distributed Object Technology system written entirely in Python, that is designed to be very easy to use.""",
+		description = "distributed object middleware for Python (IPC/RPC), version 3.x",
+		long_description = """Pyro stands for PYthon Remote Objects. It is an advanced and powerful Distributed Object Technology system written entirely in Python, that is designed to be very easy to use.
+
+This is version 3.x of Pyro, the stable version.
+For a more modern version with new features, look at Pyro4 instead.""",
 		author = "Irmen de Jong",
 		author_email="irmen@razorvine.net",
 		keywords="distributed objects, middleware, network communication, DOT, RMI, IPC",
