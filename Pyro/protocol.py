@@ -645,19 +645,24 @@ class PYROAdapter(object):
 		#  (object ID, method name, flags, (arg1,arg2,...))
 		importer=fromlist=None
 		try:
-			try:
+			if Pyro.config.PYRO_MOBILE_CODE:
 				# install a custom importer to intercept any extra needed modules
 				# when unpickling the request just obtained from the client
-				imp.acquire_lock()
-				importer=agent_import(__builtin__.__import__)
-				__builtin__.__import__=importer
+				try:
+					imp.acquire_lock()
+					importer=agent_import(__builtin__.__import__)
+					__builtin__.__import__=importer
+					req=self._unpickleRequest(pflags, body)
+				finally:
+					__builtin__.__import__=importer.orig_import
+					imp.release_lock()
+			else:
+				# no mobile code; just unpickle the stuff without a custom importer.
 				req=self._unpickleRequest(pflags, body)
-				if type(req)!=tuple or len(req)!=4 or type(req[3])!=tuple:
-					# sanity check failed
-					raise ProtocolError("invalid request data format")
-			finally:
-				__builtin__.__import__=importer.orig_import
-				imp.release_lock()
+
+			if type(req)!=tuple or len(req)!=4 or type(req[3])!=tuple:
+				# sanity check failed
+				raise ProtocolError("invalid request data format")
 
 		except ImportError,x:
 			if Pyro.config.PYRO_MOBILE_CODE:
