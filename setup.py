@@ -32,7 +32,7 @@ For a more modern version with new features, look at Pyro4 instead.""",
 		author_email="irmen@razorvine.net",
 		keywords="distributed objects, middleware, network communication, DOT, RMI, IPC",
 		url = "http://www.xs4all.nl/~irmen/pyro3/",
-		packages=['Pyro','Pyro.EventService','Pyro.ext'],
+		packages=['Pyro','Pyro.EventService','Pyro.ext','Pyro.test'],
 		scripts = list(scripts),
 		platforms="any",
 		classifiers=[
