@@ -452,7 +452,15 @@ class PYROAdapter(object):
 	def remoteInvocation(self, method, flags, *args):
 		with self.lock:
 			# only 1 thread at a time may use this connection to call a remote method
-			return self._remoteInvocation(method, flags, *args)
+			try:
+				self.__pyrocallbusy=True
+				return self._remoteInvocation(method, flags, *args)
+				self.__pyrocallbusy=False
+			finally:
+				if self.__pyrocallbusy:
+					# the call has been aborted before completion, close the connection
+					# to avoid corrupt transfers on the next call
+					self.release()
 
 	def _remoteInvocation(self, method, flags, *args):
 		if 'conn' not in self.__dict__.keys():
@@ -474,8 +482,10 @@ class PYROAdapter(object):
 			raise
 		else:
 			if flags & Pyro.constants.RIF_Oneway:
+				self.__pyrocallbusy=False
 				return None		# no answer required, return immediately
 			ver,answer,pflags = self.receiveMsg(self.conn,1)  # read the server's response, send no further replies
+			self.__pyrocallbusy=False
 			if answer is None:
 				raise ProtocolError('incorrect answer received')
 	
