@@ -1,8 +1,10 @@
-#!/usr/bin/env python
-import sys, time
+# Autoreconnect server
+# uses the Name Server
+
+import time
 import Pyro.naming
 import Pyro.core
-from Pyro.errors import PyroError,NamingError
+from Pyro.errors import NamingError
 
 class testobject(Pyro.core.ObjBase):
 	def __init__(self):
@@ -13,19 +15,15 @@ class testobject(Pyro.core.ObjBase):
 		time.sleep(1)
 
 
-# initialize the server and set the default namespace group
-Pyro.core.initServer()
-
-# locate the NS
 print 'Searching Naming Service...'
 daemon = Pyro.core.Daemon()
 locator = Pyro.naming.NameServerLocator()
 ns = locator.getNS()
 
 try:
-    ns.createGroup(":test")
+	ns.createGroup(":test")
 except NamingError:
-    pass
+	pass
 
 daemon.useNameServer(ns)
 

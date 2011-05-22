@@ -6,6 +6,8 @@ The client will report that the connection is lost, and that
 it is trying to rebind.
 Start the server again. You'll see that the client continues.
 
+The server_no_ns.py and client_no_ns.py show how to do this without
+a name server.
 
 NOTES:
 

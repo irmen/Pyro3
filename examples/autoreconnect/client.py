@@ -1,22 +1,16 @@
-#!/usr/bin/env python
-import sys, time
+# Autoreconnect client
+# uses the Name Server
+
+import time
 import Pyro.naming, Pyro.core
-from Pyro.protocol import getHostname
 
-# initialize the client and set the default namespace group
-Pyro.core.initClient()
-
-# locate the NS
 locator = Pyro.naming.NameServerLocator()
 print 'Searching Naming Service...',
 ns = locator.getNS()
-
-print 'Naming Service found at',ns.URI.address,'('+(Pyro.protocol.getHostname(ns.URI.address) or '??')+') port',ns.URI.port
-
 URI=ns.resolve(':test.autoreconnect')
 obj = Pyro.core.getAttrProxyForURI(URI)
 
-while 1:
+while True:
 	print 'call...'
 	try:
 		obj.method(42)
@@ -29,4 +23,3 @@ while 1:
 		print 'Connection lost. REBINDING...'
 		print '(restart the server now)'
 		obj.adapter.rebindURI()
-
