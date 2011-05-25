@@ -132,7 +132,7 @@
 It is strongly advised to upgrade because of this error in older versions.</li>
 </ul>
 
-  <h3><a name="latest" id="latest"></a>Pyro 3.13</h3>
+  <h3><a></a>Pyro 3.13</h3>
 <ul>
 <li>Minimum supported Python version is now 2.5.</li>	
 <li>Added a built-in echo server for test purposes (try: python -m Pyro.test.echoserver -h. See chapter 'Usage' for more info.)</li>
@@ -142,6 +142,12 @@ It is strongly advised to upgrade because of this error in older versions.</li>
 <li>Removed unneeded import agent logic and locking from handleInvocation. This sometimes was a cause of deadlock.</li>
 </ul>
 
+  <h3><a name="latest" id="latest"></a>Pyro 3.14</h3>
+<ul>
+    <li>added check for interrupted remote calls, close the connection to avoid corrupt transfers</li>
+    <li>added example to autoreconnect example that doesn't use the name server</li>
+</li>
+</ul>
   <div class="nav">
   <hr>
   <table width="100%">
