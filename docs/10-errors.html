@@ -82,6 +82,8 @@
     <li>Printing a very detailed traceback, including the names and values of current local variables at the moment of
     the exception. See the <code>PYRO_DETAILED_TRACEBACK</code> config item. This one is disabled
     by default because of security reasons.</li>
+    <li>You can set a custom excepthook in <code>sys.excepthook</code> to automatically print any remote
+    exception tracebacks that might be part of an exception. The hook is provided as <code>Pyro.util.excepthook</code>.</li>
   </ul>
 
   <h3>What error occurs where and when?</h3>

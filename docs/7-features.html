@@ -513,7 +513,17 @@ except Exception,x:
 </pre>
 <p>
   This function is safe to call on all exceptions, also normal (local) exceptions. See the &quot;simple&quot; and
-&quot;exceptions&quot; examples.</p>
+&quot;exceptions&quot; examples.
+It is also possible to set a custom excepthook to automatically take care of the remote traceback printing:
+<pre>
+    import sys
+    import Pyro.util
+    
+    sys.excepthook = Pyro.util.excepthook
+    
+    #... call any method ...
+</pre>
+</p>
 
   <h3><a name="daemon" id="daemon"></a>Remotely accessing the Daemon</h3>Usually you won't care a bit, but the Pyro
   Daemon that is running in each Pyro server program, is exposed by a Pyro object itself. That means that you can
