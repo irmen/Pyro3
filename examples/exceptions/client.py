@@ -47,7 +47,9 @@ except Exception,x:
 	print 'CAUGHT ERROR, printing Pyro traceback >>>>>>',x
 	print ''.join(Pyro.util.getPyroTraceback(x))
 	print '<<<<<<< end of Pyro traceback'
-	
-print '*** invoking server method that crashes, not catching anything ***'
-print test.complexerror()
+
+print "\n*** installing pyro's excepthook"
+sys.excepthook=Pyro.util.excepthook
+print "*** invoking server method that crashes, not catching anything ***"
+print test.complexerror()     # due to the excepthook, the exception will show the pyro error
 

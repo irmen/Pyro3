@@ -436,7 +436,7 @@ def getXMLPickle(impl=None):
 
 
 # Pyro traceback printing
-def getPyroTraceback(exc_obj):
+def getPyroTraceback(exc_obj, exc_type=None, exc_trb=None):
 	def formatRemoteTraceback(remote_tb_lines) :
 		result=[]
 		result.append(" +--- This exception occured remotely (Pyro) - Remote traceback:")
@@ -447,12 +447,13 @@ def getPyroTraceback(exc_obj):
 			for line in lines :
 				result.append("\n | ")
 				result.append(line)
-		result.append("\n +--- End of remote traceback")
+		result.append("\n +--- End of remote traceback\n")
 		return result
 	try:
-		exc_type, exc_value, exc_trb=sys.exc_info()
+		if exc_type is None and exc_trb is None:
+			exc_type, exc_obj, exc_trb=sys.exc_info()
 		remote_tb=getattr(exc_obj,Pyro.constants.TRACEBACK_ATTRIBUTE,None)
-		local_tb=formatTraceback(exc_type, exc_value, exc_trb)
+		local_tb=formatTraceback(exc_type, exc_obj, exc_trb)
 		if remote_tb:
 			remote_tb=formatRemoteTraceback(remote_tb)
 			return local_tb + remote_tb
@@ -461,7 +462,7 @@ def getPyroTraceback(exc_obj):
 			return local_tb
 	finally:
 		# clean up cycle to traceback, to allow proper GC
-		del exc_type, exc_value, exc_trb
+		del exc_type, exc_obj, exc_trb
 
 
 def formatTraceback(ex_type=None, ex_value=None, tb=None):
@@ -553,3 +554,9 @@ def formatTraceback(ex_type=None, ex_value=None, tb=None):
 	else:
 		# default traceback format.
 		return traceback.format_exception(ex_type, ex_value, tb)
+
+
+def excepthook(ex_type, ex_value, ex_tb):
+	"""An exception hook you can set sys.excepthook to, to automatically print remote Pyro tracebacks"""
+	traceback="".join(getPyroTraceback(ex_value,ex_type,ex_tb))
+	sys.stderr.write(traceback)

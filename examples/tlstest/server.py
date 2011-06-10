@@ -1,5 +1,5 @@
 import threading
-import sys, time
+import sys
 import Pyro.core
 try:
     import win32com.client, pythoncom
