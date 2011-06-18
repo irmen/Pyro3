@@ -12,6 +12,14 @@ windist:
 	python setup.py bdist_wininst
 	@echo "Look in the dist/ directory"
 
+upload_docs:
+	mkdir -p build/docs
+	rm build/docs/*
+	cp docs/* build/docs/
+	python setup.py upload_sphinx
+	rm build/docs/*
+	rmdir build/docs
+    
 clean:
 	@echo "Removing stray logfiles, Pyro URI dumps, .pyo/.pyc files..."
 	find . -name \*_log  | xargs  rm -v

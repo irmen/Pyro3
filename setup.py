@@ -3,7 +3,11 @@
 # Pyro setup script
 #
 
-from distutils.core import setup
+try:
+    # try setuptools first to be able to use the upload_sphinx command
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 import sys,os,glob
 import sets
 
