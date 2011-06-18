@@ -11,7 +11,7 @@
   <div class="nav">
   <table width="100%">
     <tr>
-      <td align="left"><a href="11-services.html">&lt;previous</a> | <a href="PyroManual.html">contents</a></td>
+      <td align="left"><a href="11-services.html">&lt;previous</a> | <a href="index.html">contents</a></td>
 
       <td align="right">Pyro Manual</td>
     </tr>
@@ -1367,12 +1367,57 @@
     <li>the NS nt service won't respond to shutdown requests anymore</li>
     <li>wxnsc updated to recent WxPython API, deprecation warning is gone</li>
    </ul>
+
+  <h3>Pyro 3.8.1</h3>
+   <ul>
+    <li>Pyro 3.8 is a bug-fix release that is almost completely backwards compatible with Pyro 3.7, apart from the exception change explained next.</li>
+    <li>Pyro now uses an internal mutex to control concurrent access to proxy objects. You can now freely use proxy objects in different threads. The thread ownership check has been removed, and the _transferThread() method is now a stub.</li>
+	<li>removed the exception args fiddling because it caused problems and depended on a deprecated python feature. If your code depends on the format of the exception.args field of an exception returned from a remote method call, you may need to change your code. This is the only thing that may not be backward compatible with code written for Pyro 3.7</li>
+	<li>improved Jython and IronPython compatibility. See wiki pages for detailed info on this.</li>
+	<li>fixed bug that self.daemon wasn't always set in NameServerStarter, causing problems with the shutdown and getServerSockets methods</li>
+	<li>fixed pickling/copying of proxies (they were forgetting attributes such as oneway methods)</li>
+	<li>version banner printing is now default off</li>
+	<li>improved errorhandling of some protocol errors in protocol.py</li>
+	<li>added request data format sanity check in protocol.py</li>
+	<li>fixed /bin/env to /usr/bin/env in a couple of files (following patches from Ubuntu package)</li>
+	<li>removed spaces in hashbang line in a lot of shellscripts (following patches from Ubuntu package)</li>
+	<li>handle EINTR status (interrupted system call) during socket reads (no more ConnectionClosedError)</li>
+	<li>fixed crash in initServer: storage dir checking issue with non-unique temporary files</li>
+	<li>fixed crash in errormessage in naming.py</li>
+	<li>changed relative imports to absolute imports</li>
+	<li>a few more changes to certain del methods to avoid crashes</li>
+	<li>nameserver locator no longer searches other hosts if an explicit hostname parameter is given</li>
+	<li>pyro-xnsc didn't correctly use the hostname from the name server location textfield</li>
+	<li>pyro-ns has new '-r' option to not look for existing name servers when starting a new one</li>
+	<li>prefers hashlib over md5 module because of deprecation in newer python versions</li>
+	<li>improved performance of supports_multithreading() and supports_compression() tests in util2.py (don't let them test the importing over and over again)</li>
+	<li>removed util.py's dependency on protocol.py to avoid possible import problem</li>
+	<li>fixed attrproxy getattr loop when deleting the object</li>
+    <li>new config item PYROSSL_POSTCONNCHECK that you can set to 0 (default=1) to circumvent connection/certificate validations when using SSL</li>
+	<li>user_passwd_auth example: passwords no longer stored as plaintext</li>
+	<li>fixed server side connection exception when error occurs during oneway call</li>
+	<li>The os can select a random port for your Pyro daemons if you set port=0 (and norange=1) when creating daemons. NS and ES also support this.</li>
+	<li>You can now override the broadcast address for the name server and the name server locator. Added config items for this as well. </li>
+    <li>fixed orig_import call in protocol.py for extra params that Python 2.6+ use</li>
+    <li>replaced custom locking objects by imp.acquire_lock() to obtain global import lock in mobile code import logic</li>
+    <li>autoreconnect example no longer stops after ten seconds</li>
+    <li>benchmark example got its iterations heavily increased because of faster machines</li>
+    <li>distributed-computing2 example generates easier numbers to avoid excessive computation times in factorization</li>
+    <li>configuration.py, core.py, nsc.py explicitly import Pyro.errors to avoid import errors during runtime hopefully</li>
+    <li>fixed monospace font in manual's print css; slightly tweaked the colors; headers are all underlined now (makes for easier reading when printed)</li>
+    <li>ext/remote.py and remote_nons.py don't eat all break signals anymore (only ctrl-c), quickstart examples use timeout on loop to be able to break them</li>
+    <li>cleanups in SSL code in protocol.py (receive loop, handleRequests, M2Crypto.threading.init() called if multithreading)</li>
+    <li>added 2 convenience methods to the daemon: getLocalObject(guid) and getLocalObjectForProxy(proxy)</li>
+    <li>AllInOne examples now use automatic port allocation to avoid port rebinding issues on certain os'es such as MacOS</li>
+    <li>3.8.1: fixed mobile code deadlock</li>
+    <li>3.8.1: better handling of socket.timeout errors</li>
+   </ul>
   
   <div class="nav">
   <hr>
   <table width="100%">
     <tr>
-      <td align="left"><a href="11-services.html">&lt;previous</a> | <a href="PyroManual.html">contents</a></td>
+      <td align="left"><a href="11-services.html">&lt;previous</a> | <a href="index.html">contents</a></td>
 
       <td align="right">Pyro Manual</td>
     </tr>
