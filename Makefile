@@ -14,7 +14,7 @@ windist:
 
 upload_docs:
 	mkdir -p build/docs
-	rm build/docs/*
+	rm -f build/docs/*
 	cp docs/* build/docs/
 	python setup.py upload_sphinx
 	rm build/docs/*
