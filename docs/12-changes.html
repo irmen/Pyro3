@@ -107,6 +107,9 @@ It is strongly advised to upgrade because of this error in older versions.</li>
   <h3><a name="latest" id="latest"></a>Pyro 3.15</h3>
 <ul>
     <li>added excepthook to Pyro.util that you can use in sys.excepthook to print remote exceptions. Exceptions example shows the use.</li>
+    <li>moved pidfile location to /var/run (daemonizer.py) because of security vulnerability, Debian bug #631912</li>
+    <li>unix command line tools in bin are now flagged executable</li>
+    <li>updated some urls in the manual, and the manual is now hosted on Pypi</li>
 </ul>
 
   <div class="nav">
