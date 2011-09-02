@@ -9,7 +9,7 @@
 
 
 # General Pyro Version String ####
-VERSION = '3.15-svn'
+VERSION = '3.15'
 
 # Fixed (internal) GUIDs
 INTERNAL_DAEMON_GUID='c0000000'+'01100000'+'10000000'+'10000001'
