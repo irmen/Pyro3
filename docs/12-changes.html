@@ -104,12 +104,17 @@ It is strongly advised to upgrade because of this error in older versions.</li>
 </li>
 </ul>
 
-  <h3><a name="latest" id="latest"></a>Pyro 3.15</h3>
+  <h3>Pyro 3.15</h3>
 <ul>
     <li>added excepthook to Pyro.util that you can use in sys.excepthook to print remote exceptions. Exceptions example shows the use.</li>
     <li>moved pidfile location to /var/run (daemonizer.py) because of security vulnerability, Debian bug #631912</li>
     <li>unix command line tools in bin are now flagged executable</li>
     <li>updated some urls in the manual, and the manual is now hosted on Pypi</li>
+</ul>
+
+  <h3><a name="latest" id="latest"></a>Pyro 3.16</h3>
+<ul>
+    <li>connecting a proxy socket now also honors a timeout set by proxy._setTimeout()</li>
 </ul>
 
   <div class="nav">

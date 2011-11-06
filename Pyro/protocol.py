@@ -45,6 +45,14 @@ try:
 except ImportError:
 	class SSLError(Exception): pass
 
+ERRNO_RETRIES=[errno.EINTR, errno.EAGAIN, errno.EWOULDBLOCK, errno.EINPROGRESS]
+if hasattr(errno, "WSAEINTR"):
+    ERRNO_RETRIES.append(errno.WSAEINTR)
+if hasattr(errno, "WSAEWOULDBLOCK"):
+    ERRNO_RETRIES.append(errno.WSAEWOULDBLOCK)
+if hasattr(errno, "WSAEINPROGRESS"):
+    ERRNO_RETRIES.append(errno.WSAEINPROGRESS)
+
 #------ Get the hostname (possibly of other machines) (returns None on error)
 def getHostname(ip=None):
 	try:
@@ -196,6 +204,33 @@ except ImportError:
 		def set_sock_no_inherit(sock):
 			pass
 
+
+# connect a socket with an optional timeout setting
+def _connect_socket(sock, host, port, timeout=None):
+	previoustimeout=sock.gettimeout()
+	try:
+		sock.settimeout(timeout)
+		sock.connect((host,port))
+	except socket.error:
+		# This can happen when the socket is in non-blocking mode (or has a timeout configured).
+		# We check if it is a retryable errno (usually EINPROGRESS).
+		# If so, we use select() to wait until the socket is in writable state,
+		# essentially rebuilding a blocking connect() call.
+		xv = sys.exc_info()[1]
+		errno = xv.errno
+		if errno in ERRNO_RETRIES:
+			while True:
+				sr, sw, se = safe_select([], [sock], [sock], 1.0)
+				if sock in sw:
+					break   # yay, writable now, connect() completed
+				elif sock in se:
+					raise socket.error("connect failed")
+		else:
+			raise
+	finally:
+		sock.settimeout(previoustimeout)  # undo timeout setting
+
+
 #------ PYRO: adapter (default Pyro wire protocol)
 #------ This adapter is for protocol version 4 ONLY
 # Future adapters could be downwards compatible and more flexible.
@@ -261,7 +296,7 @@ class PYROAdapter(object):
 			try:
 				self.URI=URI
 				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				sock.connect((URI.address, URI.port))
+				_connect_socket(sock, URI.address, URI.port, self.timeout)
 				conn=TCPConnection(sock,sock.getpeername())
 				# receive the authentication challenge string, and use that to build the actual identification string.
 				try:
@@ -862,7 +897,7 @@ class PYROSSLAdapter(PYROAdapter):
 				sock = SSL.Connection(self.ctx,socket.socket(socket.AF_INET, socket.SOCK_STREAM))
 				if not Pyro.config.PYROSSL_POSTCONNCHECK:
 					sock.postConnectionCheck=None
-				sock.connect((URI.address, URI.port))
+				_connect_socket(sock, URI.address, URI.port, self.timeout)
 				conn=TCPConnection(sock, sock.getpeername())
 				# receive the authentication challenge string, and use that to build the actual identification string.
 				authChallenge=self.recvAuthChallenge(conn)
@@ -1227,7 +1262,7 @@ class TCPServer(object):
 		else:
 			return map(lambda conn: conn.sock, self.connections)+[self.sock]
 
-# Sometimes safe_select() raises an select.error exception with the EINTR
+# Sometimes _selectfunction() raises an select.error exception with the EINTR
 # errno flag set, which basically tells the caller to try again later.
 # This safe_select method works around this case and indeed just tries again.
 _selectfunction=select.select
