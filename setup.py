@@ -31,7 +31,7 @@ if __name__ == '__main__' :
 		long_description = """Pyro stands for PYthon Remote Objects. It is an advanced and powerful Distributed Object Technology system written entirely in Python, that is designed to be very easy to use.
 
 This is version 3.x of Pyro, which is deprecated. It only gets bugfixes.
-For the current version with new features, look at `Pyro4 </pypi/Pyro4>`_ instead.""",
+For the current version with new features, look at `Pyro4 <http://pypi.python.org/pypi/Pyro4>`_ instead.""",
 		author = "Irmen de Jong",
 		author_email="irmen@razorvine.net",
 		keywords="distributed objects, middleware, network communication, DOT, RMI, IPC",
