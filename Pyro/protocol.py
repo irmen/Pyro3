@@ -194,10 +194,15 @@ try:
 except ImportError:
 	# no fcntl available, try the windows version
 	try: 
-		from ctypes import windll, WinError 
-		def set_sock_no_inherit(sock): 
+		from ctypes import windll, WinError, wintypes
+		# help ctypes to set the proper args for this kernel32 call on 64-bit pythons
+		_SetHandleInformation = windll.kernel32.SetHandleInformation
+		_SetHandleInformation.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.DWORD]
+		_SetHandleInformation.restype = wintypes.BOOL  # don't need this, but might as well
+
+		def set_sock_no_inherit(sock):
 			# mark the given socket fd as non-inheritable (Windows).
-			if not windll.kernel32.SetHandleInformation(sock.fileno(), 1, 0): 
+			if not _SetHandleInformation(sock.fileno(), 1, 0):
 				raise WinError() 	
 	except ImportError:
 		# nothing available, define a dummy function
