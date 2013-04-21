@@ -35,7 +35,7 @@ For the current version with new features, look at `Pyro4 <http://pypi.python.or
 		author = "Irmen de Jong",
 		author_email="irmen@razorvine.net",
 		keywords="distributed objects, middleware, network communication, DOT, RMI, IPC",
-		url = "http://irmen.home.xs4all.nl/pyro3/",
+		url = "http://pythonhosted.org/Pyro/",
 		packages=['Pyro','Pyro.EventService','Pyro.ext','Pyro.test'],
 		scripts = list(scripts),
 		platforms="any",
