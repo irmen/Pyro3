@@ -30,7 +30,7 @@ if __name__ == '__main__' :
 		description = "distributed object middleware for Python (IPC/RPC), version 3.x",
 		long_description = """Pyro stands for PYthon Remote Objects. It is an advanced and powerful Distributed Object Technology system written entirely in Python, that is designed to be very easy to use.
 
-This is version 3.x of Pyro, which is deprecated. It only gets bugfixes.
+This is version 3.x of Pyro, which is no longer being maintained.
 For the current version with new features, look at `Pyro4 <http://pypi.python.org/pypi/Pyro4>`_ instead.""",
 		author = "Irmen de Jong",
 		author_email="irmen@razorvine.net",
@@ -40,8 +40,7 @@ For the current version with new features, look at `Pyro4 <http://pypi.python.or
 		scripts = list(scripts),
 		platforms="any",
 		classifiers=[
-		        "Development Status :: 5 - Production/Stable",
-		        "Development Status :: 6 - Mature",
+		        "Development Status :: 7 - Inactive",
 		        "Intended Audience :: Developers",
 		        "License :: OSI Approved :: MIT License",
 		        "Operating System :: OS Independent",
